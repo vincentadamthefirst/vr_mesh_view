@@ -1,0 +1,13 @@
+@=
+projectType="application_plugin";
+projectName="mesh_view";
+projectGUID="A6590632-B8B4-4A0C-816F-FC23CCD62644";
+addProjectDirs=[CGV_DIR."/libs", CGV_DIR."/plugins", CGV_DIR."/3rd"];
+addIncDirs=[CGV_DIR."/libs"];
+addProjectDeps=["cgv_utils", "cgv_type", "cgv_reflect", "cgv_data", "cgv_signal", "cgv_base", "cgv_media", "cgv_gui", 
+"cgv_render","cgv_os","fltk", "cgv_viewer","cg_fltk", "cg_ext", "crg_stereo_view", 
+"crg_light", "cg_meta", "cmi_io","cmv_avi","crg_grid", "delaunay","cgv_gl", "glew", "plot"];
+addCommandLineArguments=[
+	'config:"'.INPUT_DIR.'/config.def"',
+	after("type(shader_config):shader_path='".INPUT_DIR.";".CGV_DIR."/libs/plot/glsl;".CGV_DIR."/libs/cgv_gl/glsl'","cg_fltk")
+];
