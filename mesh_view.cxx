@@ -23,6 +23,7 @@
 #include <cgv/utils/scan.h>
 #include <fstream>
 #include <cgv_gl/gl/gltf_support.h>
+#include "halfedgemesh.h"
 
 using namespace cgv::base;
 using namespace cgv::signal;
@@ -190,7 +191,7 @@ public:
 	void generate_dini_surface()
 	{
 		M.clear();
-		// allocate per vertex colors of type rgb with float components
+		// allocate per Vector colors of type rgb with float components
 		M.ensure_colors(cgv::media::CT_RGB, (n + 1)*m);
 
 		for (int i = 0; i <= n; ++i) {
@@ -203,7 +204,7 @@ public:
 				int vi = M.new_position(vec3(a*cos(u)*sin(v), a*sin(u)*sin(v), a*(cos(v) + log(tan(0.5f*v))) + b * u));
 				// set color
 				M.set_color(vi, rgb(x, y, 0.5f));
-				// add quad connecting current vertex with previous ones
+				// add quad connecting current Vector with previous ones
 				if (i > 0) {
 					int vi = ((i - 1) * m + j);
 					int delta_j = -1;
@@ -242,14 +243,14 @@ public:
 	bool read_mesh(const std::string& file_name)
 	{
 		mesh_type tmp;
-		size_t vertex_count = 0;
+		size_t Vector_count = 0;
 		if (cgv::utils::to_lower(cgv::utils::file::get_extension(file_name)) == "gltf") {
 			fx::gltf::Document doc = fx::gltf::LoadFromText(file_name);
 			if (get_context()) {
 				cgv::render::context& ctx = *get_context();
 				build_render_info(file_name, doc, ctx, r_info);
 				r_info.bind(ctx, ctx.ref_surface_shader_program(true), true);
-				extract_additional_information(doc, B, vertex_count);
+				extract_additional_information(doc, B, Vector_count);
 			}
 			else
 				extract_mesh(file_name, doc, tmp);
@@ -261,9 +262,9 @@ public:
 		if (tmp.get_nr_positions() > 0) {
 			M = tmp;
 			B = M.compute_box();
-			vertex_count = M.get_nr_positions();
+			Vector_count = M.get_nr_positions();
 		}
-		sphere_style.radius = float(0.05*sqrt(B.get_extent().sqr_length() / vertex_count));
+		sphere_style.radius = float(0.05*sqrt(B.get_extent().sqr_length() / Vector_count));
 		on_set(&sphere_style.radius);
 		sphere_hidden_style.radius = sphere_style.radius;
 		on_set(&sphere_hidden_style.radius);
@@ -293,7 +294,7 @@ public:
 		update_member(member_ptr);
 		post_redraw();
 	}
-	// a hack that adds vertex colors to a mesh and used for illustration purposes only
+	// a hack that adds Vector colors to a mesh and used for illustration purposes only
 	void construct_mesh_colors()
 	{
 		if (M.has_colors())
@@ -908,11 +909,11 @@ public:
 		prog.set_uniform(ctx, "map_color_to_material", (int)color_mapping);
 		prog.set_uniform(ctx, "illumination_mode", (int)illumination_mode);
 		// set default surface color for color mapping which only affects 
-		// rendering if mesh does not have per vertex colors and color_mapping is on
+		// rendering if mesh does not have per Vector colors and color_mapping is on
 		if (prog.get_color_index() != -1)
 			prog.set_attribute(ctx, prog.get_color_index(), surface_color);
 
-		// render the mesh from the vertex buffers with selected program
+		// render the mesh from the Vector buffers with selected program
 		if (!M.get_positions().empty())
 			mesh_info.draw_all(ctx, !opaque_part, opaque_part);
 		if (!r_info.ref_draw_calls().empty())
@@ -1074,7 +1075,7 @@ public:
 	}
 
 	void debug_mesh_generation() {
-		if (M.get_positions().size() == 0) return; // mesh is empty, no conversion neccessary
+		if (M.get_positions().empty()) return; // mesh is empty, no conversion neccessary
 
 		/// define index type
 		typedef cgv::type::uint32_type idx_type;
@@ -1086,14 +1087,40 @@ public:
 
 		auto originalPositions = M.get_positions();
 		std::vector<unsigned int> triangleBuffer;
-		std::vector<idx_type> vertexIndices;
+		std::vector<idx_type> vectorIndices;
 		std::vector<vec3i> uniqueTriples;
 
-		M.merge_indices(vertexIndices, uniqueTriples, false, false);
+		M.merge_indices(vectorIndices, uniqueTriples, false, false);
+		M.extract_triangle_element_buffer(vectorIndices, triangleBuffer);
 
-		M.extract_triangle_element_buffer(vertexIndices, triangleBuffer);
+		HE_Mesh newMesh;
 
-		// TODO finish code
+		for (auto i = 0; i < triangleBuffer.size(); i += 3) {
+			unsigned int vectorAIndex = triangleBuffer.at(i);
+			unsigned int vectorBIndex = triangleBuffer.at(i + 1);
+			unsigned int vectorCIndex = triangleBuffer.at(i + 2);
+
+			// adding the 3 vectors
+			auto vectorA = newMesh.AddVector(vectorAIndex, originalPositions.at(vectorAIndex));
+			auto vectorB = newMesh.AddVector(vectorBIndex, originalPositions.at(vectorBIndex));
+			auto vectorC = newMesh.AddVector(vectorCIndex, originalPositions.at(vectorCIndex));
+
+			auto face = newMesh.AddFace();
+
+			// generating 3 half edges per triangle
+			auto halfEdgeC = newMesh.AddHalfEdge(vectorC, vectorA, face);
+			auto halfEdgeB = newMesh.AddHalfEdge(vectorB, vectorC, face, halfEdgeC);
+			auto halfEdgeA = newMesh.AddHalfEdge(vectorA, vectorB, face, halfEdgeB);
+
+			// closing the loop
+			halfEdgeC->next = halfEdgeA;
+		}
+
+		uniqueTriples.clear();
+		triangleBuffer.clear();
+		vectorIndices.clear();
+
+		// TODO use newMesh for further tasks
 	}
 };
 
