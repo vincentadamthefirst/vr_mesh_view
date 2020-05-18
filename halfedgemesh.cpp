@@ -40,7 +40,7 @@ HE_Edge* HE_Mesh::AddHalfEdge(HE_Vertex* origin, HE_Vertex* dest, HE_Face* face,
 			break;
 		}
 	}
-
+	face->face_edge = newHalfEdge;
 	halfEdges.push_back(newHalfEdge);
 	originalEdges.insert(std::make_pair(std::make_pair(origin->originalIndex, dest->originalIndex), newHalfEdge));
 	return newHalfEdge;
@@ -60,4 +60,12 @@ std::vector<HE_Face*> HE_Mesh::GetAdjacentFaces(HE_Face* face) {
 	}
 
 	return toReturn;
+}
+
+HE_Face* HE_Mesh::AddBoundary(HE_Edge *edge) {
+	HE_Face* f = edge->face;
+	// f is not a element of boundaryFaces
+	if (std::find(boundaryFaces.begin(), boundaryFaces.end(), f) == boundaryFaces.end())
+		boundaryFaces.push_back(f);
+	return f;
 }

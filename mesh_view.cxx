@@ -24,6 +24,7 @@
 #include <fstream>
 #include <cgv_gl/gl/gltf_support.h>
 #include "halfedgemesh.h"
+#include "mesh_utils.h"
 
 using namespace cgv::base;
 using namespace cgv::signal;
@@ -1116,11 +1117,18 @@ public:
 			halfEdgeC->next = halfEdgeA;
 		}
 
+		// construct boundaries
+		for (auto edge_it : *newMesh.GetHalfEdges()) {
+			newMesh.AddBoundary(edge_it);
+		}
 		uniqueTriples.clear();
 		triangleBuffer.clear();
 		vectorIndices.clear();
 
 		// TODO use newMesh for further tasks
+		std::cout << "surface: " << mesh_utils::surface(newMesh) << std::endl;
+		std::cout << "volume: " << mesh_utils::volume(newMesh) << std::endl;
+		std::cout << "shortest distance to mesh from (0,0,0): " << mesh_utils::shortest_distance(vec3(0,0,0),newMesh) << std::endl;
 	}
 };
 

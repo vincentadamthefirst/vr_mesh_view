@@ -13,9 +13,9 @@ namespace mesh_utils {
     float surface(HE_Mesh newMesh) {
         float result = 0;
         for (auto face : *newMesh.GetFaces()) {
-            vec3 p1 = face->adjacent->origin->position;
-            vec3 p2 = face->adjacent->next->origin->position;
-            vec3 p3 = face->adjacent->next->next->origin->position;
+            vec3 p1 = face->face_edge->origin->position;
+            vec3 p2 = face->face_edge->next->origin->position;
+            vec3 p3 = face->face_edge->next->next->origin->position;
             result += triangle_area(p1,p2,p3);
         }
         return result;
@@ -27,13 +27,12 @@ namespace mesh_utils {
 
 
     float volume(HE_Mesh newMesh) {
-        bool notclosed = false;
-        if (notclosed) return -1;
+        if (!newMesh.isClosed()) return -1;
         float result = 0;
         for (auto face : *newMesh.GetFaces()) {
-            vec3 p1 = face->adjacent->origin->position;
-            vec3 p2 = face->adjacent->next->origin->position;
-            vec3 p3 = face->adjacent->next->next->origin->position;
+            vec3 p1 = face->face_edge->origin->position;
+            vec3 p2 = face->face_edge->next->origin->position;
+            vec3 p3 = face->face_edge->next->next->origin->position;
             result += signed_volume_tetrahedron(p1, p2, p3);
         }
         return result;
@@ -43,7 +42,7 @@ namespace mesh_utils {
         float min_dist = std::numeric_limits<float>::max();
 
         //brute force
-        for (auto it : *newMesh.GetVertices) {
+        for (auto it : *newMesh.GetVertices()) {
             float distance = (it->position - point).length();
             if (distance < min_dist)
                 min_dist = distance;

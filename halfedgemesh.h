@@ -33,6 +33,9 @@ struct HE_Vertex {
 struct HE_Face {
 	/// one adjacent halfegde of the mesh, needed to find adjacent faces
 	HE_Edge* adjacent = nullptr;
+	/// one half-edge of the face;
+	HE_Edge* face_edge;
+
 };
 
 class HE_Mesh
@@ -43,6 +46,7 @@ public:
 		vertices.clear();
 		halfEdges.clear();
 		faces.clear();
+		boundaryFaces.clear();
 
 		originalVectorIndices.clear();
 		originalEdges.clear();
@@ -54,6 +58,8 @@ public:
 	std::vector<HE_Edge*>* GetHalfEdges() { return &halfEdges; }
 	/// return reference to the stored faces of the mesh
 	std::vector<HE_Face*>* GetFaces() { return &faces; }
+	/// return reference to the stored boundaryfaces of the mesh
+	std::vector<HE_Face*>* GetBoundaryFaces() { return &boundaryFaces; }
 
 	std::map<unsigned int, HE_Vertex*> GetOriginalVectorIndices() { return originalVectorIndices; }
 
@@ -68,10 +74,16 @@ public:
 	/// return adjacent faces for a given one in the mesh (for now only triangles supported)
 	std::vector<HE_Face*> GetAdjacentFaces(HE_Face* face);
 
+	/// return true if the mesh is closed
+	bool isClosed() { return boundaryFaces.size() == 0 ? true : false; }
+
+	HE_Face* AddBoundary(HE_Edge* edge);
+
 private:
 	std::vector<HE_Vertex*> vertices;
 	std::vector<HE_Edge*> halfEdges;
 	std::vector<HE_Face*> faces;
+	std::vector<HE_Face*> boundaryFaces;
 
 	std::map<unsigned int, HE_Vertex*> originalVectorIndices;
 	std::map<std::pair<unsigned int, unsigned int>, HE_Edge*> originalEdges;
