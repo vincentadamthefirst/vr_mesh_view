@@ -1100,11 +1100,6 @@ public:
 			unsigned int vectorBIndex = uniqueTriples.at(triangleBuffer.at(i + 1))[0];
 			unsigned int vectorCIndex = uniqueTriples.at(triangleBuffer.at(i + 2))[0];
 
-			std::cout << originalPositions.at(vectorAIndex).x() << ", " << originalPositions.at(vectorAIndex).y() << ", " << originalPositions.at(vectorAIndex).z() << std::endl;
-			std::cout << originalPositions.at(vectorBIndex).x() << ", " << originalPositions.at(vectorBIndex).y() << ", " << originalPositions.at(vectorBIndex).z() << std::endl;
-			std::cout << originalPositions.at(vectorCIndex).x() << ", " << originalPositions.at(vectorCIndex).y() << ", " << originalPositions.at(vectorCIndex).z() << std::endl;
-			std::cout << std::endl;
-
 			// adding the 3 vectors
 			auto vectorA = newMesh->AddVector(vectorAIndex, originalPositions.at(vectorAIndex));
 			auto vectorB = newMesh->AddVector(vectorBIndex, originalPositions.at(vectorBIndex));
@@ -1134,7 +1129,6 @@ public:
 		if (generated_mesh == nullptr) return;
 
 		// TODO use newMesh for further tasks
-
 
 		return;
 
