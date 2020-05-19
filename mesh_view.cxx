@@ -1096,9 +1096,9 @@ public:
 		M.extract_triangle_element_buffer(vectorIndices, triangleBuffer);
 
 		for (auto i = 0; i < triangleBuffer.size(); i += 3) {
-			unsigned int vectorAIndex = triangleBuffer.at(i);
-			unsigned int vectorBIndex = triangleBuffer.at(i + 1);
-			unsigned int vectorCIndex = triangleBuffer.at(i + 2);
+			unsigned int vectorAIndex = uniqueTriples.at(triangleBuffer.at(i))[0];
+			unsigned int vectorBIndex = uniqueTriples.at(triangleBuffer.at(i + 1))[0];
+			unsigned int vectorCIndex = uniqueTriples.at(triangleBuffer.at(i + 2))[0];
 
 			std::cout << originalPositions.at(vectorAIndex).x() << ", " << originalPositions.at(vectorAIndex).y() << ", " << originalPositions.at(vectorAIndex).z() << std::endl;
 			std::cout << originalPositions.at(vectorBIndex).x() << ", " << originalPositions.at(vectorBIndex).y() << ", " << originalPositions.at(vectorBIndex).z() << std::endl;
