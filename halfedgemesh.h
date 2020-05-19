@@ -61,8 +61,6 @@ public:
 	/// return reference to the stored boundaryfaces of the mesh
 	std::vector<HE_Face*>* GetBoundaryFaces() { return &boundaryFaces; }
 
-	std::map<unsigned int, HE_Vertex*> GetOriginalVectorIndices() { return originalVectorIndices; }
-
 	/// adding a vector and returning a reference to it, checks for duplicates based on originalIndex
 	HE_Vertex* AddVector(unsigned int originalIndex, vec3 position);
 	/// adding a face and returning a reference to it
@@ -73,6 +71,8 @@ public:
 
 	/// return adjacent faces for a given one in the mesh (for now only triangles supported)
 	std::vector<HE_Face*> GetAdjacentFaces(HE_Face* face);
+	/// return vertices making up a face (for now only triangles supported)
+	std::vector<HE_Vertex*> GetVerticesForFace(HE_Face* face);
 
 	/// return true if the mesh is closed
 	bool isClosed() { return boundaryFaces.empty() ? true : false; }

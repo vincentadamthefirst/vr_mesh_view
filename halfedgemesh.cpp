@@ -62,10 +62,20 @@ std::vector<HE_Face*> HE_Mesh::GetAdjacentFaces(HE_Face* face) {
 	return toReturn;
 }
 
-HE_Face* HE_Mesh::AddBoundary(HE_Edge *edge) {
+
+HE_Face* HE_Mesh::AddBoundary(HE_Edge* edge) {
 	HE_Face* f = edge->face;
 	// f is not a element of boundaryFaces
 	if (std::find(boundaryFaces.begin(), boundaryFaces.end(), f) == boundaryFaces.end())
 		boundaryFaces.push_back(f);
 	return f;
+}
+std::vector<HE_Vertex*> HE_Mesh::GetVerticesForFace(HE_Face* face) {
+	std::vector<HE_Vertex*> toReturn;
+
+	toReturn.push_back(face->adjacent->origin);
+	toReturn.push_back(face->adjacent->next->origin);
+	toReturn.push_back(face->adjacent->next->next->origin);
+
+	return toReturn;
 }
