@@ -75,7 +75,7 @@ public:
 	std::vector<HE_Face*> GetAdjacentFaces(HE_Face* face);
 
 	/// return true if the mesh is closed
-	bool isClosed() { return boundaryFaces.size() == 0 ? true : false; }
+	bool isClosed() { return boundaryFaces.empty() ? true : false; }
 
 	HE_Face* AddBoundary(HE_Edge* edge);
 

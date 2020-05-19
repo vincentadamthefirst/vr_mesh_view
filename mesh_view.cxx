@@ -1096,7 +1096,7 @@ public:
 
 		HE_Mesh newMesh;
 
-		for (auto i = 0; i < triangleBuffer.size(); i += 3) {
+		for (auto i = 0; i < triangleBuffer.size() ; i += 3) {
 			unsigned int vectorAIndex = triangleBuffer.at(i);
 			unsigned int vectorBIndex = triangleBuffer.at(i + 1);
 			unsigned int vectorCIndex = triangleBuffer.at(i + 2);
@@ -1119,11 +1119,14 @@ public:
 
 		// construct boundaries
 		for (auto edge_it : *newMesh.GetHalfEdges()) {
-			newMesh.AddBoundary(edge_it);
+			if(edge_it ->twin == nullptr)
+				newMesh.AddBoundary(edge_it);
 		}
 		uniqueTriples.clear();
 		triangleBuffer.clear();
 		vectorIndices.clear();
+
+		std::cout << "" << mesh_utils::triangle_area(vec3(-1,-1,-1), vec3(1, 1, -1), vec3(1, 1, 1)) << std::endl;
 
 		// TODO use newMesh for further tasks
 		std::cout << "surface: " << mesh_utils::surface(newMesh) << std::endl;
