@@ -1139,9 +1139,9 @@ public:
 
 		
 		// TODO use newMesh for further tasks
-		std::cout << "surface: " << mesh_utils::surface(*generated_mesh) << std::endl;
-		std::cout << "volume: " << mesh_utils::volume(*generated_mesh) << std::endl;
-		std::cout << "shortest distance to mesh from (0,0,0): " << mesh_utils::shortest_distance(vec3(0, 0, 0), *generated_mesh) << std::endl;
+		std::cout << "surface: " << mesh_utils::surface(generated_mesh) << std::endl;
+		std::cout << "volume: " << mesh_utils::volume(generated_mesh) << std::endl;
+		std::cout << "shortest distance to mesh from (0,0,0): " << mesh_utils::shortest_distance(vec3(0, 0, 0), generated_mesh) << std::endl;
 		return;
 
 		for (auto face : *generated_mesh->GetFaces()) {
