@@ -40,7 +40,6 @@ HE_Edge* HE_Mesh::AddHalfEdge(HE_Vertex* origin, HE_Vertex* dest, HE_Face* face,
 			break;
 		}
 	}
-	face->face_edge = newHalfEdge;
 	halfEdges.push_back(newHalfEdge);
 	originalEdges.insert(std::make_pair(std::make_pair(origin->originalIndex, dest->originalIndex), newHalfEdge));
 	return newHalfEdge;

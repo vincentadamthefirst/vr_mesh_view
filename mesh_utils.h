@@ -4,9 +4,9 @@ typedef typename fvec<float, 3> vec3;
 
 namespace mesh_utils {  
     void getVerticesOfFace(HE_Face* face, vec3& p1, vec3& p2, vec3& p3) {
-        p1 = face->face_edge->origin->position;
-        p2 = face->face_edge->next->origin->position;
-        p3 = face->face_edge->next->next->origin->position;
+        p1 = face->adjacent->origin->position;
+        p2 = face->adjacent->next->origin->position;
+        p3 = face->adjacent->next->next->origin->position;
     }
     float triangle_area(vec3 p1, vec3 p2, vec3 p3) {
         vec3 a = p1 - p2;
