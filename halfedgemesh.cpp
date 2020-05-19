@@ -61,3 +61,13 @@ std::vector<HE_Face*> HE_Mesh::GetAdjacentFaces(HE_Face* face) {
 
 	return toReturn;
 }
+
+std::vector<HE_Vertex*> HE_Mesh::GetVerticesForFace(HE_Face* face) {
+	std::vector<HE_Vertex*> toReturn;
+
+	toReturn.push_back(face->adjacent->origin);
+	toReturn.push_back(face->adjacent->next->origin);
+	toReturn.push_back(face->adjacent->next->next->origin);
+
+	return toReturn;
+}

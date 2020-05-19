@@ -1074,8 +1074,10 @@ public:
 		glDisable(GL_BLEND);
 	}
 
-	void debug_mesh_generation() {
-		if (M.get_positions().empty()) return; // mesh is empty, no conversion neccessary
+	HE_Mesh* generate_from_simple_mesh(mesh_type M) {
+		auto newMesh = new HE_Mesh();
+
+		if (M.get_positions().empty()) return nullptr; // mesh is empty, no conversion neccessary
 
 		/// define index type
 		typedef cgv::type::uint32_type idx_type;
@@ -1093,24 +1095,27 @@ public:
 		M.merge_indices(vectorIndices, uniqueTriples, false, false);
 		M.extract_triangle_element_buffer(vectorIndices, triangleBuffer);
 
-		HE_Mesh newMesh;
-
 		for (auto i = 0; i < triangleBuffer.size(); i += 3) {
 			unsigned int vectorAIndex = triangleBuffer.at(i);
 			unsigned int vectorBIndex = triangleBuffer.at(i + 1);
 			unsigned int vectorCIndex = triangleBuffer.at(i + 2);
 
-			// adding the 3 vectors
-			auto vectorA = newMesh.AddVector(vectorAIndex, originalPositions.at(vectorAIndex));
-			auto vectorB = newMesh.AddVector(vectorBIndex, originalPositions.at(vectorBIndex));
-			auto vectorC = newMesh.AddVector(vectorCIndex, originalPositions.at(vectorCIndex));
+			std::cout << originalPositions.at(vectorAIndex).x() << ", " << originalPositions.at(vectorAIndex).y() << ", " << originalPositions.at(vectorAIndex).z() << std::endl;
+			std::cout << originalPositions.at(vectorBIndex).x() << ", " << originalPositions.at(vectorBIndex).y() << ", " << originalPositions.at(vectorBIndex).z() << std::endl;
+			std::cout << originalPositions.at(vectorCIndex).x() << ", " << originalPositions.at(vectorCIndex).y() << ", " << originalPositions.at(vectorCIndex).z() << std::endl;
+			std::cout << std::endl;
 
-			auto face = newMesh.AddFace();
+			// adding the 3 vectors
+			auto vectorA = newMesh->AddVector(vectorAIndex, originalPositions.at(vectorAIndex));
+			auto vectorB = newMesh->AddVector(vectorBIndex, originalPositions.at(vectorBIndex));
+			auto vectorC = newMesh->AddVector(vectorCIndex, originalPositions.at(vectorCIndex));
+
+			auto face = newMesh->AddFace();
 
 			// generating 3 half edges per triangle
-			auto halfEdgeC = newMesh.AddHalfEdge(vectorC, vectorA, face);
-			auto halfEdgeB = newMesh.AddHalfEdge(vectorB, vectorC, face, halfEdgeC);
-			auto halfEdgeA = newMesh.AddHalfEdge(vectorA, vectorB, face, halfEdgeB);
+			auto halfEdgeC = newMesh->AddHalfEdge(vectorC, vectorA, face);
+			auto halfEdgeB = newMesh->AddHalfEdge(vectorB, vectorC, face, halfEdgeC);
+			auto halfEdgeA = newMesh->AddHalfEdge(vectorA, vectorB, face, halfEdgeB);
 
 			// closing the loop
 			halfEdgeC->next = halfEdgeA;
@@ -1120,7 +1125,27 @@ public:
 		triangleBuffer.clear();
 		vectorIndices.clear();
 
+		return newMesh;
+	}
+
+	void debug_mesh_generation() {
+		auto generated_mesh = generate_from_simple_mesh(M);
+
+		if (generated_mesh == nullptr) return;
+
 		// TODO use newMesh for further tasks
+
+
+		return;
+
+		for (auto face : *generated_mesh->GetFaces()) {
+			std::cout << "Face: " << std::endl;
+			for (auto vertex : generated_mesh->GetVerticesForFace(face)) {
+				std::cout << "\t" << vertex->position.x() << ", " << vertex->position.y() << ", " << vertex->position.z() << "\n" << std::endl;
+			}
+		}
+
+		delete generated_mesh;
 	}
 };
 
