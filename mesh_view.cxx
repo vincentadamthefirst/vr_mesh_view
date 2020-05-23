@@ -23,8 +23,11 @@
 #include <cgv/utils/scan.h>
 #include <fstream>
 #include <cgv_gl/gl/gltf_support.h>
+#include <cgv_gl/box_wire_renderer.h>
+#include "aabb_tree.h"
 #include "halfedgemesh.h"
-#include "mesh_utils.h"
+#include "mesh_utils.h""
+
 
 using namespace cgv::base;
 using namespace cgv::signal;
@@ -40,6 +43,7 @@ private:
 	bool have_new_mesh;
 public:
 	typedef cgv::media::mesh::simple_mesh<float> mesh_type;
+	
 	typedef mesh_type::idx_type idx_type;
 	typedef mesh_type::vec3i vec3i;
 
@@ -73,6 +77,10 @@ public:
 	rgb  surface_color;
 	IlluminationMode illumination_mode;
 
+	//show bounding box
+	bool show_bounding_box;
+
+
 	std::string scene_file_name;
 	std::string file_name;
 
@@ -95,6 +103,62 @@ public:
 	float a, b;
 	float lb, ub;
 
+	HE_Mesh* generate_from_simple_mesh(mesh_type M) {
+		auto newMesh = new HE_Mesh();
+
+		if (M.get_positions().empty()) return nullptr; // mesh is empty, no conversion neccessary
+
+		/// define index type
+		typedef cgv::type::uint32_type idx_type;
+		/// define index triple type
+		typedef cgv::math::fvec<idx_type, 3> vec3i;
+
+		// first (re)compute the normals to make sure they are calculated
+		M.compute_vertex_normals();
+
+		auto originalPositions = M.get_positions();
+		std::vector<unsigned int> triangleBuffer;
+		std::vector<idx_type> vectorIndices;
+		std::vector<vec3i> uniqueTriples;
+
+		M.merge_indices(vectorIndices, uniqueTriples, false, false);
+		M.extract_triangle_element_buffer(vectorIndices, triangleBuffer);
+
+		for (auto i = 0; i < triangleBuffer.size(); i += 3) {
+			unsigned int vectorAIndex = uniqueTriples.at(triangleBuffer.at(i))[0];
+			unsigned int vectorBIndex = uniqueTriples.at(triangleBuffer.at(i + 1))[0];
+			unsigned int vectorCIndex = uniqueTriples.at(triangleBuffer.at(i + 2))[0];
+
+
+			// adding the 3 vectors
+			auto vectorA = newMesh->AddVector(vectorAIndex, originalPositions.at(vectorAIndex));
+			auto vectorB = newMesh->AddVector(vectorBIndex, originalPositions.at(vectorBIndex));
+			auto vectorC = newMesh->AddVector(vectorCIndex, originalPositions.at(vectorCIndex));
+
+			auto face = newMesh->AddFace();
+
+			// generating 3 half edges per triangle
+			auto halfEdgeC = newMesh->AddHalfEdge(vectorC, vectorA, face);
+			auto halfEdgeB = newMesh->AddHalfEdge(vectorB, vectorC, face, halfEdgeC);
+			auto halfEdgeA = newMesh->AddHalfEdge(vectorA, vectorB, face, halfEdgeB);
+
+			// closing the loop
+			halfEdgeC->next = halfEdgeA;
+		}
+
+		// construct boundaries
+		for (auto edge_it : *newMesh->GetHalfEdges()) {
+			if (edge_it->twin == nullptr)
+				newMesh->AddBoundary(edge_it);
+		}
+		uniqueTriples.clear();
+		triangleBuffer.clear();
+		vectorIndices.clear();
+
+
+
+		return newMesh;
+	}
 	void apply_translation()
 	{
 		mat3 I;
@@ -166,6 +230,8 @@ public:
 		sphere_hidden_style.halo_color = rgba(0.5f, 0.5f, 0.5f, 0.5f);
 		show_vertices = true;
 
+		show_bounding_box = false;
+
 		show_wireframe = true;
 		cone_style.surface_color = rgb(1.0f, 0.8f, 0.4f);
 
@@ -192,7 +258,7 @@ public:
 	void generate_dini_surface()
 	{
 		M.clear();
-		// allocate per Vector colors of type rgb with float components
+		// allocate per vertex colors of type rgb with float components
 		M.ensure_colors(cgv::media::CT_RGB, (n + 1)*m);
 
 		for (int i = 0; i <= n; ++i) {
@@ -205,7 +271,7 @@ public:
 				int vi = M.new_position(vec3(a*cos(u)*sin(v), a*sin(u)*sin(v), a*(cos(v) + log(tan(0.5f*v))) + b * u));
 				// set color
 				M.set_color(vi, rgb(x, y, 0.5f));
-				// add quad connecting current Vector with previous ones
+				// add quad connecting current vertex with previous ones
 				if (i > 0) {
 					int vi = ((i - 1) * m + j);
 					int delta_j = -1;
@@ -228,6 +294,7 @@ public:
 	bool self_reflect(cgv::reflect::reflection_handler& rh)
 	{
 		return
+			rh.reflect_member("show_bounding_box", show_bounding_box) &&
 			rh.reflect_member("show_surface", show_surface) &&
 			rh.reflect_member("cull_mode", (int&)cull_mode) &&
 			rh.reflect_member("color_mapping", (int&)color_mapping) &&
@@ -244,14 +311,14 @@ public:
 	bool read_mesh(const std::string& file_name)
 	{
 		mesh_type tmp;
-		size_t Vector_count = 0;
+		size_t vertex_count = 0;
 		if (cgv::utils::to_lower(cgv::utils::file::get_extension(file_name)) == "gltf") {
 			fx::gltf::Document doc = fx::gltf::LoadFromText(file_name);
 			if (get_context()) {
 				cgv::render::context& ctx = *get_context();
 				build_render_info(file_name, doc, ctx, r_info);
 				r_info.bind(ctx, ctx.ref_surface_shader_program(true), true);
-				extract_additional_information(doc, B, Vector_count);
+				extract_additional_information(doc, B, vertex_count);
 			}
 			else
 				extract_mesh(file_name, doc, tmp);
@@ -263,9 +330,9 @@ public:
 		if (tmp.get_nr_positions() > 0) {
 			M = tmp;
 			B = M.compute_box();
-			Vector_count = M.get_nr_positions();
+			vertex_count = M.get_nr_positions();
 		}
-		sphere_style.radius = float(0.05*sqrt(B.get_extent().sqr_length() / Vector_count));
+		sphere_style.radius = float(0.05*sqrt(B.get_extent().sqr_length() / vertex_count));
 		on_set(&sphere_style.radius);
 		sphere_hidden_style.radius = sphere_style.radius;
 		on_set(&sphere_hidden_style.radius);
@@ -295,7 +362,7 @@ public:
 		update_member(member_ptr);
 		post_redraw();
 	}
-	// a hack that adds Vector colors to a mesh and used for illustration purposes only
+	// a hack that adds vertex colors to a mesh and used for illustration purposes only
 	void construct_mesh_colors()
 	{
 		if (M.has_colors())
@@ -648,12 +715,6 @@ public:
 			align("\b");
 			end_tree_node(a);
 		}
-		if (begin_tree_node("debug", translate_vector, true)) {
-			align("\a");
-			add_decorator("mesh data structure", "heading", "level=3");
-			connect_copy(add_button("generate mesh")->click, rebind(this, &mesh_view::debug_mesh_generation));
-			align("\b");
-		}
 		if (begin_tree_node("transform", translate_vector, true)) {
 			align("\a");
 			add_decorator("translation", "heading", "level=3");
@@ -676,6 +737,8 @@ public:
 			unsigned i;
 			connect_copy(add_button("add center", "w=96", " ")->click, rebind(this, &mesh_view::add_center, _c<bool>(false)));
 			connect_copy(add_button("and collapse", "w=96")->click, rebind(this, &mesh_view::add_center, _c<bool>(true)));
+			//connect_copy(add_button("show bounding box", "w=96")->click, rebind(this, &mesh_view::show_bounding));
+
 			if (begin_tree_node("pick_points", pick_points)) {
 				align("\a");
 				for (i = 0; i < pick_points.size(); ++i) {
@@ -743,7 +806,7 @@ public:
 			align("\b");
 			end_tree_node(show_vertices);
 		}
-
+		
 		show = begin_tree_node("wireframe", show_wireframe, false, "options='w=100';align=' '");
 		add_member_control(this, "show", show_wireframe, "toggle", "w=42;shortcut='w'", " ");
 		add_member_control(this, "", cone_style.surface_color, "", "w=42");
@@ -753,6 +816,10 @@ public:
 			align("\b");
 			end_tree_node(show_wireframe);
 		}
+		show = begin_tree_node("bounding_box", show_bounding_box, false, "options='w=100';align=' '");
+		add_member_control(this, "show", show_bounding_box, "toggle", "w=42;shortcut='w'", " ");
+	
+
 
 		show = begin_tree_node("surface", show_surface, false, "options='w=100';align=' '");
 		add_member_control(this, "show", show_surface, "toggle", "w=42;shortcut='s'", " ");
@@ -769,6 +836,10 @@ public:
 			}
 			add_member_control(this, "surface color", surface_color);
 			add_member_control(this, "illumination", illumination_mode, "dropdown", "enums='none,one sided,two sided'");
+		
+		
+
+
 			// this is how to add a ui for the materials read from an obj material file
 			std::vector<cgv::render::textured_material*>* materials = 0;
 			if (!mesh_info.ref_materials().empty())
@@ -910,11 +981,11 @@ public:
 		prog.set_uniform(ctx, "map_color_to_material", (int)color_mapping);
 		prog.set_uniform(ctx, "illumination_mode", (int)illumination_mode);
 		// set default surface color for color mapping which only affects 
-		// rendering if mesh does not have per Vector colors and color_mapping is on
+		// rendering if mesh does not have per vertex colors and color_mapping is on
 		if (prog.get_color_index() != -1)
 			prog.set_attribute(ctx, prog.get_color_index(), surface_color);
 
-		// render the mesh from the Vector buffers with selected program
+		// render the mesh from the vertex buffers with selected program
 		if (!M.get_positions().empty())
 			mesh_info.draw_all(ctx, !opaque_part, opaque_part);
 		if (!r_info.ref_draw_calls().empty())
@@ -956,6 +1027,43 @@ public:
 					cr.disable(ctx);
 				}
 			}
+			//render bounding box
+			if (show_bounding_box) {
+				box_wire_renderer  box_render;
+				box_render.init(ctx);
+				AabbTree<triangle> aabb_tree;
+				HE_Mesh* he = generate_from_simple_mesh(M);
+				
+				build_aabbtree_from_triangles(he, aabb_tree);
+				std::vector<box3> boxes;
+				boxes.push_back(aabb_tree.Root()->get_box());
+				//boxes.push_back(aabb_tree.Root()->left_child()->get_box());
+				//boxes.push_back(aabb_tree.Root()->right_child()->get_box());
+				/*
+				boxes.push_back(aabb_tree.Root()->left_child()->left_child()->get_box());
+				boxes.push_back(aabb_tree.Root()->left_child()->right_child()->get_box());
+				boxes.push_back(aabb_tree.Root()->right_child()->left_child()->get_box());
+				boxes.push_back(aabb_tree.Root()->right_child()->right_child()->get_box());
+				
+				boxes.push_back(aabb_tree.Root()->left_child()->left_child()->left_child()->get_box());
+				boxes.push_back(aabb_tree.Root()->left_child()->left_child()->right_child()->get_box());
+				boxes.push_back(aabb_tree.Root()->left_child()->right_child()->left_child()->get_box());
+				boxes.push_back(aabb_tree.Root()->left_child()->right_child()->right_child()->get_box());
+				boxes.push_back(aabb_tree.Root()->right_child()->left_child()->left_child()->get_box());
+				boxes.push_back(aabb_tree.Root()->right_child()->left_child()->right_child()->get_box());
+				boxes.push_back(aabb_tree.Root()->right_child()->right_child()->left_child()->get_box());
+				boxes.push_back(aabb_tree.Root()->right_child()->right_child()->right_child()->get_box());*/
+				box_render.set_box_array(ctx, boxes);
+				//aabb_tree.test();
+
+				if (box_render.validate_and_enable(ctx))
+				{
+					glDrawArrays(GL_POINTS, 0, (GLsizei)boxes.size());
+					box_render.disable(ctx);
+				}
+
+			}
+
 		}
 		if (show_surface) {
 			draw_surface(ctx, true);
@@ -1073,85 +1181,6 @@ public:
 		}
 		glDepthMask(GL_TRUE);
 		glDisable(GL_BLEND);
-	}
-
-	HE_Mesh* generate_from_simple_mesh(mesh_type M) {
-		auto newMesh = new HE_Mesh();
-
-		if (M.get_positions().empty()) return nullptr; // mesh is empty, no conversion neccessary
-
-		/// define index type
-		typedef cgv::type::uint32_type idx_type;
-		/// define index triple type
-		typedef cgv::math::fvec<idx_type, 3> vec3i;
-
-		// first (re)compute the normals to make sure they are calculated
-		M.compute_vertex_normals();
-
-		auto originalPositions = M.get_positions();
-		std::vector<unsigned int> triangleBuffer;
-		std::vector<idx_type> vectorIndices;
-		std::vector<vec3i> uniqueTriples;
-
-		M.merge_indices(vectorIndices, uniqueTriples, false, false);
-		M.extract_triangle_element_buffer(vectorIndices, triangleBuffer);
-
-		for (auto i = 0; i < triangleBuffer.size(); i += 3) {
-			unsigned int vectorAIndex = uniqueTriples.at(triangleBuffer.at(i))[0];
-			unsigned int vectorBIndex = uniqueTriples.at(triangleBuffer.at(i + 1))[0];
-			unsigned int vectorCIndex = uniqueTriples.at(triangleBuffer.at(i + 2))[0];
-
-
-			// adding the 3 vectors
-			auto vectorA = newMesh->AddVector(vectorAIndex, originalPositions.at(vectorAIndex));
-			auto vectorB = newMesh->AddVector(vectorBIndex, originalPositions.at(vectorBIndex));
-			auto vectorC = newMesh->AddVector(vectorCIndex, originalPositions.at(vectorCIndex));
-
-			auto face = newMesh->AddFace();
-
-			// generating 3 half edges per triangle
-			auto halfEdgeC = newMesh->AddHalfEdge(vectorC, vectorA, face);
-			auto halfEdgeB = newMesh->AddHalfEdge(vectorB, vectorC, face, halfEdgeC);
-			auto halfEdgeA = newMesh->AddHalfEdge(vectorA, vectorB, face, halfEdgeB);
-
-			// closing the loop
-			halfEdgeC->next = halfEdgeA;
-		}
-
-		// construct boundaries
-		for (auto edge_it : *newMesh->GetHalfEdges()) {
-			if(edge_it ->twin == nullptr)
-				newMesh->AddBoundary(edge_it);
-		}
-		uniqueTriples.clear();
-		triangleBuffer.clear();
-		vectorIndices.clear();
-
-
-		
-		return newMesh;
-	}
-
-	void debug_mesh_generation() {
-		auto generated_mesh = generate_from_simple_mesh(M);
-
-		if (generated_mesh == nullptr) return;
-
-		
-		// TODO use newMesh for further tasks
-		std::cout << "surface: " << mesh_utils::surface(generated_mesh) << std::endl;
-		std::cout << "volume: " << mesh_utils::volume(generated_mesh) << std::endl;
-		std::cout << "shortest distance to mesh from (0,0,0): " << mesh_utils::shortest_distance(vec3(0, 0, 0), generated_mesh) << std::endl;
-		return;
-
-		for (auto face : *generated_mesh->GetFaces()) {
-			std::cout << "Face: " << std::endl;
-			for (auto vertex : generated_mesh->GetVerticesForFace(face)) {
-				std::cout << "\t" << vertex->position.x() << ", " << vertex->position.y() << ", " << vertex->position.z() << "\n" << std::endl;
-			}
-		}
-
-		delete generated_mesh;
 	}
 };
 
