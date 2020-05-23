@@ -5,8 +5,7 @@
 typedef cgv::math::fvec<float, 3> vec3;
 typedef cgv::media::mesh::simple_mesh<float> mesh_type;
 
-void build_aabbtree_from_triangles(HE_Mesh * he, AabbTree<triangle>& tree)
-{
+void build_aabbtree_from_triangles(HE_Mesh * he, AabbTree<triangle>& tree) {
 	std::cout << "Building aabb tree ..." << std::endl;
 	tree.clear();
 	std::vector<HE_Face*>* face_ = he->GetFaces();
