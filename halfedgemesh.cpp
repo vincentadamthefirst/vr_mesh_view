@@ -20,6 +20,10 @@ HE_Vertex* HE_Mesh::AddVector(unsigned int originalIndex, vec3 position) {
 	return newVertex;
 }
 
+int CantorPairing(int k1, int k2) {
+	return ((k1 + k2) * (k1 + k2 + 1) / 2) + k2;
+}
+
 HE_Edge* HE_Mesh::AddHalfEdge(HE_Vertex* origin, HE_Vertex* dest, HE_Face* face, HE_Edge* next) {
 	auto newHalfEdge = new HE_Edge;
 	newHalfEdge->origin = origin;
@@ -28,20 +32,20 @@ HE_Edge* HE_Mesh::AddHalfEdge(HE_Vertex* origin, HE_Vertex* dest, HE_Face* face,
 
 	if (face->adjacent == nullptr) face->adjacent = newHalfEdge;
 
-	for (auto entry : originalEdges) {
-		if (entry.first.first == origin->originalIndex && entry.first.second == dest->originalIndex) {
-			delete newHalfEdge;
-			return entry.second;
-		}
-
-		if (entry.first.first == dest->originalIndex && entry.first.second == origin->originalIndex) {
-			newHalfEdge->twin = entry.second;
-			entry.second->twin = newHalfEdge;
-			break;
-		}
+	auto possibleExisting = originalEdges.find(CantorPairing(origin->originalIndex, dest->originalIndex));
+	if (possibleExisting != originalEdges.end()) {
+		delete newHalfEdge;
+		return possibleExisting->second;
 	}
+
+	auto possibleTwin = originalEdges.find(CantorPairing(dest->originalIndex, origin->originalIndex));
+	if (possibleTwin != originalEdges.end()) {
+		newHalfEdge->twin = possibleTwin->second;
+		possibleTwin->second->twin = newHalfEdge;
+	}
+ 
 	halfEdges.push_back(newHalfEdge);
-	originalEdges.insert(std::make_pair(std::make_pair(origin->originalIndex, dest->originalIndex), newHalfEdge));
+	originalEdges.insert(std::make_pair(CantorPairing(origin->originalIndex, dest->originalIndex), newHalfEdge));
 	return newHalfEdge;
 }
 
@@ -61,7 +65,6 @@ std::vector<HE_Face*> HE_Mesh::GetAdjacentFaces(HE_Face* face) {
 	return toReturn;
 }
 
-
 HE_Face* HE_Mesh::AddBoundary(HE_Edge* edge) {
 	HE_Face* f = edge->face;
 	// f is not a element of boundaryFaces
@@ -69,6 +72,7 @@ HE_Face* HE_Mesh::AddBoundary(HE_Edge* edge) {
 		boundaryFaces.push_back(f);
 	return f;
 }
+
 std::vector<HE_Vertex*> HE_Mesh::GetVerticesForFace(HE_Face* face) {
 	std::vector<HE_Vertex*> toReturn;
 

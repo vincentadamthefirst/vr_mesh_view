@@ -84,4 +84,6 @@ private:
 
 	std::map<unsigned int, HE_Vertex*> originalVectorIndices;
 	std::map<std::pair<unsigned int, unsigned int>, HE_Edge*> originalEdges;
+
+	std::map<int, HE_Edge*> originalEdgesInt;
 };
