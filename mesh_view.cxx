@@ -102,6 +102,8 @@ public:
 	int n, m;
 	float a, b;
 	float lb, ub;
+	AabbTree<triangle> aabb_tree;
+	std::vector<box3> boxes;
 
 	HE_Mesh* generate_from_simple_mesh(mesh_type M) {
 		auto newMesh = new HE_Mesh();
@@ -331,6 +333,10 @@ public:
 			M = tmp;
 			B = M.compute_box();
 			vertex_count = M.get_nr_positions();
+			//create HE_MESH build bounding box
+			HE_Mesh* he = generate_from_simple_mesh(M);
+			build_aabbtree_from_triangles(he, aabb_tree);
+
 		}
 		sphere_style.radius = float(0.05*sqrt(B.get_extent().sqr_length() / vertex_count));
 		on_set(&sphere_style.radius);
@@ -1027,16 +1033,11 @@ public:
 					cr.disable(ctx);
 				}
 			}
-			//render bounding box
 			if (show_bounding_box) {
 				box_wire_renderer  box_render;
 				box_render.init(ctx);
-				AabbTree<triangle> aabb_tree;
-				HE_Mesh* he = generate_from_simple_mesh(M);
-				
-				build_aabbtree_from_triangles(he, aabb_tree);
-				std::vector<box3> boxes;
-				boxes.push_back(aabb_tree.Root()->get_box());
+				visit_tree(aabb_tree.Root());
+				//boxes.push_back(aabb_tree.Root()->get_box());
 				//boxes.push_back(aabb_tree.Root()->left_child()->get_box());
 				//boxes.push_back(aabb_tree.Root()->right_child()->get_box());
 				/*
@@ -1069,7 +1070,19 @@ public:
 			draw_surface(ctx, true);
 		}
 	}
-	
+	void visit_tree(AabbTree<triangle>::AabbNode* a)
+	{
+		if (a->is_leaf() == true)
+		{
+			boxes.push_back(a->get_box());
+		}
+
+		if (a->is_leaf() == false)
+		{
+			visit_tree(a->left_child());
+			visit_tree(a->right_child());
+		}
+	}
 	void draw_planes(context& ctx)
 	{
 		if (planes.empty())
