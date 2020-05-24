@@ -1000,6 +1000,10 @@ public:
 		for (i = 0; i < nr_clip_distances; ++i)
 			glDisable(GL_CLIP_DISTANCE0 + i);
 	}
+
+	
+	
+	std::vector<box3> bboxes;
 	void draw(context& ctx)
 	{
 		if (!M.get_positions().empty()) {
@@ -1036,16 +1040,24 @@ public:
 				
 				build_aabbtree_from_triangles(he, aabb_tree);
 				std::vector<box3> boxes;
-				boxes.push_back(aabb_tree.Root()->get_box());
-				//boxes.push_back(aabb_tree.Root()->left_child()->get_box());
-				//boxes.push_back(aabb_tree.Root()->right_child()->get_box());
-				/*
-				boxes.push_back(aabb_tree.Root()->left_child()->left_child()->get_box());
-				boxes.push_back(aabb_tree.Root()->left_child()->right_child()->get_box());
-				boxes.push_back(aabb_tree.Root()->right_child()->left_child()->get_box());
-				boxes.push_back(aabb_tree.Root()->right_child()->right_child()->get_box());
 				
-				boxes.push_back(aabb_tree.Root()->left_child()->left_child()->left_child()->get_box());
+				
+				/*boxes.push_back(aabb_tree.Root()->get_box());*/
+
+				
+				visit_tree(aabb_tree.Root());
+				boxes = bboxes;
+				/*boxes.push_back(aabb_tree.Root()->left_child()->get_box());
+				boxes.push_back(aabb_tree.Root()->right_child()->get_box());*/
+
+
+				
+				/*boxes.push_back(aabb_tree.root()->left_child()->left_child()->get_box());
+				boxes.push_back(aabb_tree.root()->left_child()->right_child()->get_box());
+				boxes.push_back(aabb_tree.root()->right_child()->left_child()->get_box());
+				boxes.push_back(aabb_tree.root()->right_child()->right_child()->get_box());*/
+				
+				/*boxes.push_back(aabb_tree.Root()->left_child()->left_child()->left_child()->get_box());
 				boxes.push_back(aabb_tree.Root()->left_child()->left_child()->right_child()->get_box());
 				boxes.push_back(aabb_tree.Root()->left_child()->right_child()->left_child()->get_box());
 				boxes.push_back(aabb_tree.Root()->left_child()->right_child()->right_child()->get_box());
@@ -1069,7 +1081,43 @@ public:
 			draw_surface(ctx, true);
 		}
 	}
+
 	
+	void visit_tree(AabbTree<triangle>::AabbNode *a)
+	{
+		if (a->is_leaf() == true)
+		{
+			bboxes.push_back(a->get_box());
+		}
+		
+		
+		if(a->is_leaf()==false   )
+		{
+			visit_tree(a->left_child());
+			visit_tree(a->right_child());
+			
+		
+		
+		
+			/*bboxes.insert(bboxes.end(),visit_tree(a->left_child()).begin , visit_tree(a->left_child()).end);
+		
+			bboxes.insert(bboxes.end(), visit_tree(a->right_child()).begin, visit_tree(a->right_child()).end);*/
+		
+		
+		}
+		    
+		
+		
+
+		
+		
+	}
+	
+	
+
+
+
+
 	void draw_planes(context& ctx)
 	{
 		if (planes.empty())
