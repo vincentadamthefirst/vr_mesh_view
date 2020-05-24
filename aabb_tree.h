@@ -2,15 +2,10 @@
 
 #include <vector>
 #include <cgv/math/fvec.h>
-#include <cgv/math/fmat.h>
-#include <cgv/utils/file.h>
-#include <cgv/media/illum/textured_surface_material.h>
 #include <cgv/media/axis_aligned_box.h>
-#include <cgv/media/colored_model.h>
-#include <triangle.h>
 #include <cgv/media/mesh/simple_mesh.h>
-#include <halfedgemesh.h>
-
+#include "halfedgemesh.h"
+#include "triangle.h"
 
 template <typename T>
 class AabbTree {
