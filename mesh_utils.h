@@ -3,10 +3,11 @@ using namespace cgv::math;
 typedef typename fvec<float, 3> vec3;
 
 namespace mesh_utils {  
-    void getVerticesOfFace(HE_Face* face, vec3& p1, vec3& p2, vec3& p3) {
-        p1 = face->adjacent->origin->position;
-        p2 = face->adjacent->next->origin->position;
-        p3 = face->adjacent->next->next->origin->position;
+    void getVerticesOfFace(HE_Mesh* m, HE_Face* face, vec3& p1, vec3& p2, vec3& p3) {
+        std::vector<HE_Vertex*> v = m->GetVerticesForFace(face);
+        p1 = v[0]->position;
+        p2 = v[1]->position;
+        p3 = v[2]->position;
     }
     float triangle_area(vec3 p1, vec3 p2, vec3 p3) {
         vec3 a = p1 - p2;
@@ -18,7 +19,7 @@ namespace mesh_utils {
         float result = 0.0f;
         vec3 p1, p2, p3;
         for (auto face : *newMesh->GetFaces()) {
-            getVerticesOfFace(face, p1, p2, p3);
+            getVerticesOfFace(newMesh,face, p1, p2, p3);
             float area = triangle_area(p1,p2,p3);
             result += area;
         }
@@ -34,7 +35,7 @@ namespace mesh_utils {
         float result = 0;
         vec3 p1, p2, p3;
         for (auto face : *newMesh->GetFaces()) {
-            getVerticesOfFace(face, p1, p2, p3);
+            getVerticesOfFace(newMesh, face, p1, p2, p3);
             result += signed_volume_tetrahedron(p1, p2, p3);
         }
         return result;
@@ -160,7 +161,7 @@ namespace mesh_utils {
         closestFace;
         //brute force with middle of triangle
         for (auto face : *newMesh->GetFaces()) {
-            getVerticesOfFace(face, p1, p2, p3);
+            getVerticesOfFace(newMesh, face, p1, p2, p3);
             //vec3 middle = (p1 + p2 + p3) / 3.0f;
             closestPoint = closest_point_on_triangle(point, p1, p2, p3);
             float distance = (closestPoint - point).length();
