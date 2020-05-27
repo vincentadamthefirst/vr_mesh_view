@@ -25,6 +25,8 @@
 #include <cgv_gl/gl/gltf_support.h>
 #include "halfedgemesh.h"
 #include "mesh_utils.h"
+#include "aabb_tree.h"
+#include <cgv_gl/box_wire_renderer.h>
 
 using namespace cgv::base;
 using namespace cgv::signal;
@@ -72,6 +74,11 @@ public:
 	ColorMapping color_mapping;
 	rgb  surface_color;
 	IlluminationMode illumination_mode;
+
+	//bounding box related member
+	bool show_bounding_box; 
+	AabbTree<triangle> aabb_tree;
+	std::vector<box3> boxes;
 
 	std::string scene_file_name;
 	std::string file_name;
@@ -169,6 +176,8 @@ public:
 		show_wireframe = true;
 		cone_style.surface_color = rgb(1.0f, 0.8f, 0.4f);
 
+		show_bounding_box = false;
+
 		have_new_mesh = false;
 		scene_box_outofdate = false;
 
@@ -228,6 +237,7 @@ public:
 	bool self_reflect(cgv::reflect::reflection_handler& rh)
 	{
 		return
+			rh.reflect_member("show_bounding_box", show_bounding_box) &&
 			rh.reflect_member("show_surface", show_surface) &&
 			rh.reflect_member("cull_mode", (int&)cull_mode) &&
 			rh.reflect_member("color_mapping", (int&)color_mapping) &&
@@ -264,6 +274,9 @@ public:
 			M = tmp;
 			B = M.compute_box();
 			Vector_count = M.get_nr_positions();
+			//create HE_MESH and build bounding box
+			HE_Mesh* he = generate_from_simple_mesh(M);
+			build_aabbtree_from_triangles(he, aabb_tree);
 		}
 		sphere_style.radius = float(0.05*sqrt(B.get_extent().sqr_length() / Vector_count));
 		on_set(&sphere_style.radius);
@@ -788,6 +801,10 @@ public:
 			align("\b");
 			end_tree_node(show_surface);
 		}
+		//add bounding_box button
+		show = begin_tree_node("bounding_box", show_bounding_box, false, "options='w=100';align=' '");
+		add_member_control(this, "show", show_bounding_box, "toggle", "w=42;shortcut='w'", " ");
+
 	}
 	bool init(context& ctx)
 	{
@@ -956,12 +973,39 @@ public:
 					cr.disable(ctx);
 				}
 			}
+			//render bounding box
+			if (show_bounding_box) {
+				box_wire_renderer  box_render;
+				box_render.init(ctx);
+				visit_tree(aabb_tree.Root());
+				box_render.set_box_array(ctx, boxes);
+
+				if (box_render.validate_and_enable(ctx))
+				{
+					glDrawArrays(GL_POINTS, 0, (GLsizei)boxes.size());
+					box_render.disable(ctx);
+				}
+
+			}
 		}
 		if (show_surface) {
 			draw_surface(ctx, true);
 		}
 	}
-	
+	//push back the leaf node
+	void visit_tree(AabbTree<triangle>::AabbNode* a)
+	{
+		if (a->is_leaf() == true)
+		{
+			boxes.push_back(a->get_box());
+		}
+
+		if (a->is_leaf() == false)
+		{
+			visit_tree(a->left_child());
+			visit_tree(a->right_child());
+		}
+	}
 	void draw_planes(context& ctx)
 	{
 		if (planes.empty())

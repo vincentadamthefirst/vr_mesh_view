@@ -73,7 +73,7 @@ public:
 
 	/// return true if the mesh is closed
 	bool isClosed() { return boundaryFaces.empty() ? true : false; }
-
+	/// TODO
 	HE_Face* AddBoundary(HE_Edge* edge);
 
 private:
