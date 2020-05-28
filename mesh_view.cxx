@@ -26,6 +26,7 @@
 #include "halfedgemesh.h"
 #include "mesh_utils.h"
 #include "aabb_tree.h"
+#include "ray_intersection.h"
 #include <cgv_gl/box_wire_renderer.h>
 
 using namespace cgv::base;
@@ -193,6 +194,81 @@ public:
 		lb = 0.01f;
 		ub = 2.0f;
 		n = m = 20;
+		
+		/*Some vertice points
+		vec3 v00(-0.0305058, 0.11267, 0.03556);
+		vec3 v01(-0.0285034, 0.115434, 0.0336947);
+		vec3 v02(0.0444779, 0.0960981, 0.0120995);
+
+		vec3 v10(-0.0295194, 0.112645, 0.0856748);
+		vec3 v11(-0.0274907, 0.115392, 0.0337641);
+		vec3 v12(0.0445738, 0.0960655, 0.011093);
+
+		vec3 v20(-0.0305528, 0.111285, 0.0367103);
+		vec3 v21(-0.0285135, 0.114011, 0.0349225);
+		vec3 v22(0.044851, 0.0946425, 0.0121241);
+
+		//Related eyes and intersected pos on the mesh
+		vec3 eye0(-0.0308552, 0.119768, 0.0477212);
+		vec3 eye1(-0.0308552, 0.119768, 0.0477212);
+		vec3 eye2(0.0563536, 0.0978362, 0.0132277);
+
+		vec3 pos0(-0.0302049, 0.112149, 0.0359373);
+		vec3 pos1(-0.0283122, 0.114939, 0.0340428);
+		vec3 pos2(0.0445649, 0.0956303, 0.0117814);
+		*/
+
+		//Ray Triangle Intersection Debug from line 225-272
+		//Triangle with vertices p0, p1, p2 is created
+		//7 different rays with 7 intersection points (all rays have the same origin(eye))
+
+		vec3 p0(-0.0672436, 0.136877, 0.202138);
+		vec3 p1(-0.075592, 0.128898, 0.198195);
+		vec3 p2(-0.0634377, 0.128783, 0.201072);
+
+		vec3 d0(-0.0681502, 0.143764, 0.202686);	// Far outside of the triangle
+		vec3 d1(-0.07226, 0.134041, 0.199666);		// Outside of the triangle
+		vec3 d2(-0.0686916, 0.12786, 0.198903);		// Outside of the triangle
+		vec3 d3(-0.0715118, 0.130307, 0.198878);	// Inside of the triangle
+		vec3 d4(-0.0665555, 0.132399, 0.200531);	// Inside of the triangle
+		vec3 d5(-0.0642378, 0.133841, 0.201418);	// Outside of the triangle
+		vec3 d6(-0.0661118, 0.136095, 0.201555);	// Slightly outside of the triangle
+
+		vec3 main_eye(-0.0692767, 0.130428, 0.246671);
+		ray_intersection::ray ray;
+		ray.origin = main_eye;
+
+		float t = 0.0f;
+		std::cout << "Is d0 inside triangle: " << ray_intersection::isInsideTriangle(p0, p1, p2, d0) << std::endl;
+		std::cout << "Is d1 inside triangle: " << ray_intersection::isInsideTriangle(p0, p1, p2, d1) << std::endl;
+		std::cout << "Is d2 inside triangle: " << ray_intersection::isInsideTriangle(p0, p1, p2, d2) << std::endl;
+		std::cout << "Is d3 inside triangle: " << ray_intersection::isInsideTriangle(p0, p1, p2, d3) << std::endl;
+		std::cout << "Is d4 inside triangle: " << ray_intersection::isInsideTriangle(p0, p1, p2, d4) << std::endl;
+		std::cout << "Is d5 inside triangle: " << ray_intersection::isInsideTriangle(p0, p1, p2, d5) << std::endl;
+		std::cout << "Is d6 inside triangle: " << ray_intersection::isInsideTriangle(p0, p1, p2, d6) << std::endl;
+
+		ray.direction = d0 - main_eye;
+		std::cout << "Is ray1 intersect triangle: " << ray_intersection::rayTriangleIntersect(ray, p0, p1, p2, t) << std::endl;
+		std::cout << "t: " << t << std::endl;
+		ray.direction = d1 - main_eye;
+		std::cout << "Is ray2 intersect triangle: " << ray_intersection::rayTriangleIntersect(ray, p0, p1, p2, t) << std::endl;
+		std::cout << "t: " << t << std::endl;
+		ray.direction = d2 - main_eye;
+		std::cout << "Is ray3 intersect triangle: " << ray_intersection::rayTriangleIntersect(ray, p0, p1, p2, t) << std::endl;
+		std::cout << "t: " << t << std::endl;
+		ray.direction = d3 - main_eye;
+		std::cout << "Is ray4 intersect triangle: " << ray_intersection::rayTriangleIntersect(ray, p0, p1, p2, t) << std::endl;
+		std::cout << "t: " << t << std::endl;
+		ray.direction = d4 - main_eye;
+		std::cout << "Is ray5 intersect triangle: " << ray_intersection::rayTriangleIntersect(ray, p0, p1, p2, t) << std::endl;
+		std::cout << "t: " << t << std::endl;
+		ray.direction = d5 - main_eye;
+		std::cout << "Is ray6 intersect triangle: " << ray_intersection::rayTriangleIntersect(ray, p0, p1, p2, t) << std::endl;
+		std::cout << "t: " << t << std::endl;
+		ray.direction = d6 - main_eye;
+		std::cout << "Is ray7 intersect triangle: " << ray_intersection::rayTriangleIntersect(ray, p0, p1, p2, t) << std::endl;
+		std::cout << "t: " << t << std::endl;
+		//Ray Triangle intersection Debug
 	}
 	std::string get_type_name() const
 	{
@@ -521,7 +597,8 @@ public:
 		}
 		if (e.get_kind() == EID_MOUSE) {
 			auto& me = static_cast<mouse_event&>(e);
-			
+			cgv::render::context* ctx = get_context();
+
 			switch (me.get_action()) {
 			case MA_PRESS: 
 				if (me.get_button() == MB_LEFT_BUTTON && me.get_modifiers() == EM_CTRL) {
@@ -529,6 +606,54 @@ public:
 					click_is_pick = true;
 					click_press_time = me.get_time();
 					click_button = me.get_button();
+
+					//Ray-Mesh Intersection Debug using HE_Mesh and HE_Face 
+					//By pressing CTRL and mouse left button at the same time, a ray is created and the ray's intersection with the mesh is debugged
+					
+					unsigned x = me.get_x();
+					unsigned y = me.get_y();
+					vec3 pos(0.0f);
+					view_ptr->get_z_and_unproject(*ctx, x, y, pos);
+
+					vec3 eye = view_ptr->get_eye();
+					vec3 direction = (pos - eye);
+
+					ray_intersection::ray mouse_ray;
+					mouse_ray.origin = eye;
+					mouse_ray.direction = direction;
+
+					std::cout << "\nNew ray: " << std::endl;
+					std::cout << "eye: " << eye << std::endl;
+					std::cout << "direction: " << direction << std::endl;
+
+					HE_Mesh* mesh = generate_from_simple_mesh(M);
+					if (mesh == nullptr)
+						std::cout << "Someting went wrong with the mesh generation: " << std::endl;
+					else {
+						std::cout << "NEW : " << std::endl;
+						std::cout << "Mesh is created" << std::endl;
+						float t = 0;
+						bool checker = ray_intersection::rayMeshIntersect(mouse_ray, mesh, t);
+
+						if (checker) {
+							std::cout << "t: " << t << std::endl;
+							std::cout << "Intersection point: " << ray_intersection::getIntersectionPoint(mouse_ray, t) << std::endl;
+							HE_Face* intersectedFace = ray_intersection::getIntersectedFace(mouse_ray, mesh);
+							vec3 p1, p2, p3;
+							mesh_utils::getVerticesOfFace(mesh, intersectedFace, p1, p2, p3);
+							std::cout << "Intersected face v0: " << p1 << std::endl;
+							std::cout << "Intersected face v1: " << p2 << std::endl;
+							std::cout << "Intersected face v2: " << p3 << std::endl;
+							delete intersectedFace;
+
+						}
+						else
+							std::cout << "No intersection with the mesh" << std::endl;
+						delete mesh;
+					}
+
+					//END OF DEBUG
+
 					if (on_pick(me))
 						click_is_pick = false;
 					if (pick_point_index != -1) {
