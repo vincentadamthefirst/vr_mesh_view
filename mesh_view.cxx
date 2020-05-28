@@ -26,6 +26,7 @@
 #include "halfedgemesh.h"
 #include "mesh_utils.h"
 #include "aabb_tree.h"
+#include "ray_intersection.h"
 #include <cgv_gl/box_wire_renderer.h>
 
 using namespace cgv::base;
