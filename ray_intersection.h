@@ -1,9 +1,13 @@
 #pragma once
 #include <cgv\math\fvec.h>
+#include <cgv/media/axis_aligned_box.h>
+
 #include "halfedgemesh.h"
 #include "mesh_utils.h"
-typedef typename cgv::math::fvec<float, 3> vec3;
+#include "aabb_tree.h"
 
+typedef typename cgv::math::fvec<float, 3> vec3;
+typedef typename cgv::media::axis_aligned_box<float, 3> box3;
 
 namespace ray_intersection {
 	struct ray {
@@ -24,62 +28,6 @@ namespace ray_intersection {
 			dot(N, cross(edge2, C2)) > 0) return true; // P is inside the triangle 
 		return false;
 	}
-
-	/*
-	Doesnt work
-	bool old_rayTriangleIntersect(const ray& r, const vec3& v0, const vec3& v1, const vec3& v2, float& t)
-	{
-		vec3 dir = r.direction;
-		vec3 orig = r.origin;
-
-		// compute plane's normal
-		vec3 v0v1 = v1 - v0;
-		vec3 v0v2 = v2 - v0;
-		// no need to normalize
-		vec3 N = cross(v0v1, v0v2);
-		// Step 1: finding P
-
-		// check if ray and plane are parallel ?
-		float NdotRayDirection = dot(N, dir);
-		if (fabs(NdotRayDirection) < std::numeric_limits<float>::epsilon()) // almost 0 
-			return false; // they are parallel so they don't intersect ! 
-
-		// compute d parameter
-		float d = dot(N, v0);
-
-		// compute t
-		t = (dot(N, orig) + d) / NdotRayDirection;
-		// check if the triangle is in behind the ray
-		if (t < 0) return false; // the triangle is behind 
-
-		// compute the intersection point using equation 1
-		vec3 P = orig + t * dir;
-
-		// Step 2: inside-outside test
-		vec3 C; // vector perpendicular to triangle's plane 
-
-		// edge 0
-		vec3 edge0 = v1 - v0;
-		vec3 vp0 = P - v0;
-		C = cross(edge0, vp0);
-		if (dot(N, C) < 0) return false; // P is on the right side 
-
-		// edge 1
-		vec3 edge1 = v2 - v1;
-		vec3 vp1 = P - v1;
-		C = cross(edge1, vp1);
-		if (dot(N, C) < 0)  return false; // P is on the right side 
-
-		// edge 2
-		vec3 edge2 = v0 - v2;
-		vec3 vp2 = P - v2;
-		C = cross(edge2, vp2);
-		if (dot(N, C) < 0) return false; // P is on the right side; 
-
-		return true; // this ray hits the triangle 
-	}
-	*/
-
 	//t value gives the distance multiplier 
 	bool rayTriangleIntersect(const ray& r, const vec3& v0, const vec3& v1, const vec3& v2, float& t)
 	{
@@ -170,9 +118,86 @@ namespace ray_intersection {
 				return temp_face;
 		}
 	}
-	vec3 getIntersectionPoint(const ray& r, const float& t) 
+	
+	bool rayBoxIntersect(const ray& r, const box3& b)
+	{
+		vec3 max_pnt = b.get_max_pnt();
+		vec3 min_pnt = b.get_min_pnt();
+		vec3 dir = r.direction;
+		vec3 orig = r.origin;
+
+		float tmin = (min_pnt.x() - orig.x()) / dir.x();
+		float tmax = (max_pnt.x() - orig.x()) / dir.x();
+
+		if (tmin > tmax) {float temp = tmin;tmin = tmax;tmax = temp;}
+
+		float tymin = (min_pnt.y() - orig.y()) / dir.y();
+		float tymax = (max_pnt.y() - orig.y()) / dir.y();
+
+		if (tymin > tymax) {float temp = tymin;tymin = tymax;tymax = temp;}
+
+		if ((tmin > tymax) || (tymin > tmax))
+			return false;
+
+		if (tymin > tmin)
+			tmin = tymin;
+
+		if (tymax < tmax)
+			tmax = tymax;
+
+		float tzmin = (min_pnt.z() - orig.z()) / dir.z();
+		float tzmax = (max_pnt.z() - orig.z()) / dir.z();
+
+		if (tzmin > tzmax) {float temp = tzmin; tzmin = tzmax; tzmax = temp;}
+
+		if ((tmin > tzmax) || (tzmin > tmax))
+			return false;
+
+		if (tzmin > tmin)
+			tmin = tzmin;
+
+		if (tzmax < tmax)
+			tmax = tzmax;
+
+		return true;
+	}
+
+	
+	void rayNodeIntersect(const ray& r, AabbTree<triangle>::AabbNode* node, float& t)
+	{
+		box3 box = node->get_box();
+		float temp = t;
+		if (rayBoxIntersect(r, box)) {
+			if (node->is_leaf()) {
+				float temp2 = temp;
+				std::vector<vec3> triangle = node->get_triangle();
+				if (rayTriangleIntersect(r, triangle.at(0), triangle.at(1), triangle.at(2), temp2))
+					if (temp2 != 0)
+						if (temp == 0 || temp2 < temp){
+							std::cout << "Changed from: " << temp << " to " << temp2 << std::endl;
+							temp = temp2;
+						}	
+			}
+			else {
+				rayNodeIntersect(r, node->left_child(), temp);
+				rayNodeIntersect(r, node->right_child(), temp);
+			}
+		}
+		t = temp;
+	}
+	
+	bool rayTreeIntersect(const ray& r, AabbTree<triangle>& tree, float& t)
+	{
+		AabbTree<triangle>::AabbNode* rootNode = tree.Root();
+		std::cout << "Before ray tree intersect: " << t << std::endl;
+		rayNodeIntersect(r, rootNode, t);
+		std::cout << "After ray tree intersect: " << t << std::endl;
+		if (t > 0) return true;
+		else return false;
+	}
+	
+	vec3 getIntersectionPoint(const ray& r, const float& t)
 	{
 		return r.origin + t * r.direction;
 	}
-	
 }
