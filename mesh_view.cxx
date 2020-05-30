@@ -28,6 +28,7 @@
 #include "aabb_tree.h"
 #include "ray_intersection.h"
 #include <cgv_gl/box_wire_renderer.h>
+#include <chrono>
 
 using namespace cgv::base;
 using namespace cgv::signal;
@@ -102,6 +103,7 @@ public:
 	int n, m;
 	float a, b;
 	float lb, ub;
+	float ray_length;
 
 	void apply_translation()
 	{
@@ -555,6 +557,7 @@ public:
 				case 'V': show_vertices = !show_vertices;  on_set(&show_vertices);  return true;
 				case 'W': show_wireframe= !show_wireframe; on_set(&show_wireframe); return true;
 				case 'F': show_surface = !show_surface;   on_set(&show_surface);   return true;
+				case 'B': show_bounding_box = !show_bounding_box;   on_set(&show_bounding_box);   return true;
 				case 'S' : add_sphere(ke.get_modifiers() == EM_SHIFT); return true;
 				case 'O': add_oriented_plane(ke.get_modifiers() == EM_SHIFT); return true;
 				case 'C': add_center(ke.get_modifiers() == EM_SHIFT); return true;
@@ -625,6 +628,16 @@ public:
 					std::cout << "\nNew ray: " << std::endl;
 					std::cout << "eye: " << eye << std::endl;
 					std::cout << "direction: " << direction << std::endl;
+					float t = 0;
+					auto start = std::chrono::high_resolution_clock::now();
+					bool boxIntersection = ray_intersection::rayTreeIntersect(mouse_ray, aabb_tree, t);
+					auto stop = std::chrono::high_resolution_clock::now();
+					auto duration = std::chrono::duration<double>(stop - start);
+					std::cout <<"Duration using aabb_tree/bounding box ray intersection: "<< duration.count() << std::endl;
+
+					std::cout << "boxIntersection: " << boxIntersection << std::endl;
+					std::cout << "Box Intersection t: " << t<< std::endl;
+					std::cout << "Intersection point: " << ray_intersection::getIntersectionPoint(mouse_ray, t) << std::endl;
 
 					HE_Mesh* mesh = generate_from_simple_mesh(M);
 					if (mesh == nullptr)
@@ -633,10 +646,14 @@ public:
 						std::cout << "NEW : " << std::endl;
 						std::cout << "Mesh is created" << std::endl;
 						float t = 0;
+						auto start2 = std::chrono::high_resolution_clock::now();
 						bool checker = ray_intersection::rayMeshIntersect(mouse_ray, mesh, t);
+						auto stop2 = std::chrono::high_resolution_clock::now();
+						auto duration2 = std::chrono::duration<double>(stop2 - start2);
+						
 
 						if (checker) {
-							std::cout << "t: " << t << std::endl;
+							std::cout << "Regular Intersected t: " << t << std::endl;
 							std::cout << "Intersection point: " << ray_intersection::getIntersectionPoint(mouse_ray, t) << std::endl;
 							HE_Face* intersectedFace = ray_intersection::getIntersectedFace(mouse_ray, mesh);
 							vec3 p1, p2, p3;
@@ -645,13 +662,16 @@ public:
 							std::cout << "Intersected face v1: " << p2 << std::endl;
 							std::cout << "Intersected face v2: " << p3 << std::endl;
 							delete intersectedFace;
+							
 
 						}
 						else
 							std::cout << "No intersection with the mesh" << std::endl;
+						std::cout <<"Duration using regular HE_Mesh-all triangles intersection: "<< duration2.count() << std::endl;
 						delete mesh;
+						
 					}
-
+					
 					//END OF DEBUG
 
 					if (on_pick(me))
