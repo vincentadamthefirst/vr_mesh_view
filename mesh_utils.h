@@ -1,3 +1,4 @@
+#pragma once
 #include "halfedgemesh.h"
 using namespace cgv::math;
 typedef typename fvec<float, 3> vec3;
