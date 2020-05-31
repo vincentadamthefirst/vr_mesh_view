@@ -1,7 +1,10 @@
 #pragma once
 #include "halfedgemesh.h"
+#include "aabb_tree.h"
+#include <cgv/media/axis_aligned_box.h>
 using namespace cgv::math;
 typedef typename fvec<float, 3> vec3;
+typedef typename cgv::media::axis_aligned_box<float, 3> box3;
 
 namespace mesh_utils {  
     void getVerticesOfFace(HE_Mesh* m, HE_Face* face, vec3& p1, vec3& p2, vec3& p3) {
@@ -155,12 +158,12 @@ namespace mesh_utils {
         }
 
     }
-
-    float shortest_distance(vec3 point, HE_Mesh* newMesh, HE_Face* & closestFace, vec3& closestPoint) {
+    //brute force with middle of triangle
+    float shortest_distance(const vec3 point, HE_Mesh* newMesh, HE_Face* & closestFace, vec3& closestPoint) {
         float min_dist = std::numeric_limits<float>::max();
         vec3 p1, p2, p3;
         closestFace;
-        //brute force with middle of triangle
+        
         for (auto face : *newMesh->GetFaces()) {
             getVerticesOfFace(newMesh, face, p1, p2, p3);
             //vec3 middle = (p1 + p2 + p3) / 3.0f;
@@ -172,9 +175,38 @@ namespace mesh_utils {
             }
 
         }
-        //TODO
-        //with acceleration structure
-
         return min_dist;
-    }    
+    }
+
+   
+    
+    void closest_point_node(const vec3 point, AabbTree<triangle>::AabbNode* node, vec3 & closestPoint) {
+        if (node->is_leaf()) {
+            std::vector<vec3> t = node->get_triangle();
+            closestPoint = closest_point_on_triangle(point, t.at(0), t.at(1), t.at(2));
+        }
+        else {
+            AabbTree<triangle>::AabbNode* leftNode = node->left_child();
+            AabbTree<triangle>::AabbNode* rightNode = node->right_child();
+            vec3 centerLeft = leftNode->get_box().get_center();
+            vec3 centerRight = rightNode->get_box().get_center();
+
+            float disR = (centerRight - point).length();
+            float disL = (centerLeft - point).length();
+            if (disR < disL)
+                closest_point_node(point, rightNode, closestPoint);
+            else
+                closest_point_node(point, leftNode, closestPoint);
+        }
+    }
+
+    //with acceleration structure
+    float shortest_distance_AD(vec3 point, AabbTree<triangle> tree, vec3& closestPoint) {
+        AabbTree<triangle>::AabbNode* rootNode = tree.Root();
+        closest_point_node(point, rootNode, closestPoint);
+
+        return (closestPoint - point).length();
+    }
+
+
 }

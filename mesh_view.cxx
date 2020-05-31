@@ -1182,13 +1182,15 @@ public:
 
 		if (generated_mesh == nullptr) return;
 
-		vec3 t;
+		vec3 t,s;
 		HE_Face* f;
 		// TODO use newMesh for further tasks
 		std::cout << "surface: " << mesh_utils::surface(generated_mesh) << std::endl;
 		std::cout << "volume: " << mesh_utils::volume(generated_mesh) << std::endl;
 		std::cout << "shortest distance to mesh from (0,0,0): " << mesh_utils::shortest_distance(vec3(0, 0, 0), generated_mesh,f,t) << std::endl;
 		std::cout << "closest point: " << t << std::endl;
+		std::cout << "AD shortest distance to mesh from (0,0,0): " << mesh_utils::shortest_distance_AD(vec3(0, 0, 0), aabb_tree, s) << std::endl;
+		std::cout << "AD closest point: " << s << std::endl;
 		
 
 		return;
