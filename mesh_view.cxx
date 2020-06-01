@@ -1373,30 +1373,6 @@ public:
 
 		delete generated_mesh;
 	}
-	/*
-	void render_ray() {
-		cgv::render::context* ctx = get_context();
-		vec3 ray_orgin{ 0, 0, 0 };
-		vec3 ray_intersection{ 2,2,2 };
-		std::vector<vec3> p;
-		std::vector<rgb> color;
-		p.push_back(ray_orgin);
-		p.push_back(ray_intersection);
-		rgb c(1, 0, 0);
-		color.push_back(c);
-		color.push_back(c);
-		normal_renderer line_renderer;
-		line_renderer.init(*ctx);
-		line_renderer.set_position_array(*ctx, p);
-		line_renderer.set_color_array(*ctx, color);
-		if (line_renderer.validate_and_enable(*ctx)) {
-			//line_renderer.enable(*ctx);
-			glDrawArrays(GL_LINES, 0, (GLsizei)p.size());
-			line_renderer.disable(*ctx);
-		}
-		
-	}*/
-	
 	void debug_render_ray(context& ctx) {
 		
 		
