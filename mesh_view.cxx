@@ -81,6 +81,11 @@ public:
 	bool show_bounding_box; 
 	AabbTree<triangle> aabb_tree;
 	std::vector<box3> boxes;
+	
+	//ray related members
+	bool show_ray;
+	std::vector<vec3> ray_list;
+	std::vector<rgb> color_list;
 
 	std::string scene_file_name;
 	std::string file_name;
@@ -180,7 +185,7 @@ public:
 		cone_style.surface_color = rgb(1.0f, 0.8f, 0.4f);
 
 		show_bounding_box = false;
-
+		show_ray = false;
 		have_new_mesh = false;
 		scene_box_outofdate = false;
 
@@ -315,6 +320,7 @@ public:
 	bool self_reflect(cgv::reflect::reflection_handler& rh)
 	{
 		return
+			rh.reflect_member("show_ray", show_ray) &&
 			rh.reflect_member("show_bounding_box", show_bounding_box) &&
 			rh.reflect_member("show_surface", show_surface) &&
 			rh.reflect_member("cull_mode", (int&)cull_mode) &&
@@ -653,6 +659,13 @@ public:
 						
 
 						if (checker) {
+							//push back origin point and intersection point into the list 
+							rgb c(1, 0, 0);
+							ray_list.push_back(mouse_ray.origin);
+							ray_list.push_back(ray_intersection::getIntersectionPoint(mouse_ray, t));
+							color_list.push_back(c);
+							color_list.push_back(c);
+
 							std::cout << "Regular Intersected t: " << t << std::endl;
 							std::cout << "Intersection point: " << ray_intersection::getIntersectionPoint(mouse_ray, t) << std::endl;
 							HE_Face* intersectedFace = ray_intersection::getIntersectedFace(mouse_ray, mesh);
@@ -812,6 +825,10 @@ public:
 			connect_copy(add_button("generate mesh")->click, rebind(this, &mesh_view::debug_mesh_generation));
 			align("\b");
 		}
+	
+		
+		
+
 		if (begin_tree_node("transform", translate_vector, true)) {
 			align("\a");
 			add_decorator("translation", "heading", "level=3");
@@ -946,8 +963,13 @@ public:
 			align("\b");
 			end_tree_node(show_surface);
 		}
+
+
+		show = begin_tree_node("ray", show_ray, false, "options='w=40';align=' '");
+		add_member_control(this, "show", show_ray, "toggle", "w=42;shortcut='w'", " ");
+
 		//add bounding_box button
-		show = begin_tree_node("bounding_box", show_bounding_box, false, "options='w=100';align=' '");
+		show = begin_tree_node("boundingbox", show_bounding_box, false, "options='w=80';align=' '");
 		add_member_control(this, "show", show_bounding_box, "toggle", "w=42;shortcut='w'", " ");
 
 	}
@@ -1120,6 +1142,7 @@ public:
 			}
 			//render bounding box
 			if (show_bounding_box) {
+				
 				box_wire_renderer  box_render;
 				box_render.init(ctx);
 				visit_tree(aabb_tree.Root());
@@ -1130,7 +1153,11 @@ public:
 					glDrawArrays(GL_POINTS, 0, (GLsizei)boxes.size());
 					box_render.disable(ctx);
 				}
-
+				
+				
+			}
+			if (show_ray) {
+				debug_render_ray(ctx);
 			}
 		}
 		if (show_surface) {
@@ -1346,6 +1373,53 @@ public:
 
 		delete generated_mesh;
 	}
+	/*
+	void render_ray() {
+		cgv::render::context* ctx = get_context();
+		vec3 ray_orgin{ 0, 0, 0 };
+		vec3 ray_intersection{ 2,2,2 };
+		std::vector<vec3> p;
+		std::vector<rgb> color;
+		p.push_back(ray_orgin);
+		p.push_back(ray_intersection);
+		rgb c(1, 0, 0);
+		color.push_back(c);
+		color.push_back(c);
+		normal_renderer line_renderer;
+		line_renderer.init(*ctx);
+		line_renderer.set_position_array(*ctx, p);
+		line_renderer.set_color_array(*ctx, color);
+		if (line_renderer.validate_and_enable(*ctx)) {
+			//line_renderer.enable(*ctx);
+			glDrawArrays(GL_LINES, 0, (GLsizei)p.size());
+			line_renderer.disable(*ctx);
+		}
+		
+	}*/
+	
+	void debug_render_ray(context& ctx) {
+		
+		
+		if (!ray_list.empty()) {
+			auto& prog = ctx.ref_default_shader_program();
+			int ci = prog.get_color_index();
+			attribute_array_binding::set_global_attribute_array(ctx, prog.get_position_index(), ray_list);
+			attribute_array_binding::enable_global_array(ctx, prog.get_position_index());
+			attribute_array_binding::set_global_attribute_array(ctx, ci, color_list);
+			attribute_array_binding::enable_global_array(ctx, ci);
+			glLineWidth(1);
+			prog.enable(ctx);
+			glDrawArrays(GL_LINES, 0, (GLsizei)ray_list.size());
+			prog.disable(ctx);
+			attribute_array_binding::disable_global_array(ctx, prog.get_position_index());
+			attribute_array_binding::disable_global_array(ctx, ci);
+		}
+		else {
+			std::cout << "No ray intersection." << std::endl;
+		}
+	}
+	
+		
 };
 
 #include <cgv/base/register.h>
