@@ -208,5 +208,12 @@ namespace mesh_utils {
         return (closestPoint - point).length();
     }
 
+    void shiftPositions(HE_Mesh* mesh, vec3 direction) {
+        for (auto v : *mesh->GetVertices()) {
+            v->position += direction;
+        }        
+        return;
+    }
+
 
 }

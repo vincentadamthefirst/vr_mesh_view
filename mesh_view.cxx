@@ -81,6 +81,8 @@ public:
 	AabbTree<triangle> aabb_tree;
 	std::vector<box3> boxes;
 
+	HE_Mesh* he;
+
 	std::string scene_file_name;
 	std::string file_name;
 
@@ -276,7 +278,7 @@ public:
 			B = M.compute_box();
 			Vector_count = M.get_nr_positions();
 			//create HE_MESH and build bounding box
-			HE_Mesh* he = generate_from_simple_mesh(M);
+			he = generate_from_simple_mesh(M);
 			build_aabbtree_from_triangles(he, aabb_tree);
 		}
 		sphere_style.radius = float(0.05*sqrt(B.get_extent().sqr_length() / Vector_count));
@@ -666,6 +668,10 @@ public:
 			align("\a");
 			add_decorator("mesh data structure", "heading", "level=3");
 			connect_copy(add_button("generate mesh")->click, rebind(this, &mesh_view::debug_mesh_generation));
+			add_decorator("Animation", "heading", "level=3");
+			connect_copy(add_button("Start Animation")->click, rebind(this, &mesh_view::animate));
+			add_decorator("Measuremet", "heading", "level=3");
+			connect_copy(add_button("show")->click, rebind(this, &mesh_view::measurements));
 			align("\b");
 		}
 		if (begin_tree_node("transform", translate_vector, true)) {
@@ -1203,6 +1209,71 @@ public:
 		}
 
 		delete generated_mesh;
+	}
+
+	void measurements() {
+		vec3 t, s;
+		HE_Face* f;
+		// TODO use newMesh for further tasks
+		std::cout << "surface: " << mesh_utils::surface(he) << std::endl;
+		std::cout << "volume: " << mesh_utils::volume(he) << std::endl;
+		std::cout << "shortest distance to mesh from (0,0,0): " << mesh_utils::shortest_distance(vec3(0, 0, 0), he, f, t) << std::endl;
+		std::cout << "closest point: " << t << std::endl;
+		std::cout << "AD shortest distance to mesh from (0,0,0): " << mesh_utils::shortest_distance_AD(vec3(0, 0, 0), aabb_tree, s) << std::endl;
+		std::cout << "AD closest point: " << s << std::endl;
+
+
+	}
+
+
+	void fill_animationpath(std::vector<vec3>& point_path) {
+		vec3 v1 = vec3(0, 1, 1);
+		vec3 v2 = vec3(0, 1, 3);
+		vec3 v3 = vec3(0, 2, 2);
+		vec3 v4 = vec3(1, 1, 1);
+		vec3 v5 = vec3(0, 1, 1);
+		vec3 v6 = vec3(0, 1, 5);
+		vec3 v7 = vec3(5, 1, 1);
+		vec3 v8 = vec3(6, 1, 1);
+		vec3 v9 = vec3(0, 1, 8);
+		vec3 v10 = vec3(6, -3, -1);
+		vec3 v11 = vec3(0, -1, -1);
+		point_path.push_back(v1);
+		point_path.push_back(v2);
+		point_path.push_back(v3);
+		point_path.push_back(v4);
+		point_path.push_back(v5);
+		point_path.push_back(v6);
+		point_path.push_back(v7);
+		point_path.push_back(v8);
+		point_path.push_back(v9);
+		point_path.push_back(v10);
+		point_path.push_back(v11);
+	}
+	void animate() {
+
+		
+		std::vector<vec3> point_path;
+		mesh_view::fill_animationpath(point_path);
+		
+		for (int i = 1; i < point_path.size(); ++i) {
+			if (i < 1)
+				break;
+			vec3 v = point_path[i] - point_path[i-1];
+			mesh_utils::shiftPositions(he, v);
+			mat3 I;
+			I.identity();
+			M.transform(I, v);
+			have_new_mesh = true;
+			B = M.compute_box();
+			scene_box_outofdate = true;
+			post_redraw();
+			mesh_view::measurements();
+
+		}
+
+
+		
 	}
 };
 
