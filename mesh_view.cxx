@@ -670,7 +670,7 @@ public:
 			connect_copy(add_button("generate mesh")->click, rebind(this, &mesh_view::debug_mesh_generation));
 			add_decorator("Animation", "heading", "level=3");
 			connect_copy(add_button("Start Animation")->click, rebind(this, &mesh_view::animate));
-			add_decorator("Measuremet", "heading", "level=3");
+			add_decorator("Measurements", "heading", "level=3");
 			connect_copy(add_button("show")->click, rebind(this, &mesh_view::measurements));
 			align("\b");
 		}
@@ -1188,15 +1188,8 @@ public:
 
 		if (generated_mesh == nullptr) return;
 
-		vec3 t,s;
-		HE_Face* f;
+
 		// TODO use newMesh for further tasks
-		std::cout << "surface: " << mesh_utils::surface(generated_mesh) << std::endl;
-		std::cout << "volume: " << mesh_utils::volume(generated_mesh) << std::endl;
-		std::cout << "shortest distance to mesh from (0,0,0): " << mesh_utils::shortest_distance(vec3(0, 0, 0), generated_mesh,f,t) << std::endl;
-		std::cout << "closest point: " << t << std::endl;
-		std::cout << "AD shortest distance to mesh from (0,0,0): " << mesh_utils::shortest_distance_AD(vec3(0, 0, 0), aabb_tree, s) << std::endl;
-		std::cout << "AD closest point: " << s << std::endl;
 		
 
 		return;
@@ -1268,7 +1261,7 @@ public:
 			B = M.compute_box();
 			scene_box_outofdate = true;
 			post_redraw();
-			mesh_view::measurements();
+			//mesh_view::measurements();
 
 		}
 
