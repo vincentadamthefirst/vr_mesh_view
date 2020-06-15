@@ -2,6 +2,7 @@
 #include "halfedgemesh.h"
 #include "aabb_tree.h"
 #include <cgv/media/axis_aligned_box.h>
+
 using namespace cgv::math;
 typedef typename fvec<float, 3> vec3;
 typedef typename cgv::media::axis_aligned_box<float, 3> box3;
@@ -208,5 +209,14 @@ namespace mesh_utils {
         return (closestPoint - point).length();
     }
 
+    void shiftPositions(HE_Mesh* mesh, vec3 direction) {
+        for (auto v : *mesh->GetVertices()) {
+            v->position += direction;
+        }        
+        return;
+    }
+	
+
 
 }
+
