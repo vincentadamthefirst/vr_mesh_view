@@ -1205,7 +1205,52 @@ public:
 		delete generated_mesh;
 	}
 };
+//use inverse translation mat4 to calculate the view position in local coordinate
+	//return loacl viewposition
+	vec3 view_translation(vec3 view_position, std::vector<vec3> point_path) {
+		
+		vec4 viewposition, new_view;
+		viewposition[0] = view_position[0];
+		viewposition[1] = view_position[1];
+		viewposition[2] = view_position[2];
+		viewposition[3] = 1.0;
 
+		mesh_view::fill_animationpath(point_path);
+			for (int i = 1; i < point_path.size(); ++i) {
+				if (i < 1)
+					break;
+				mat4 mat_translation, inv_translation;
+				mat_translation.identity();
+				vec3 v = point_path[i] - point_path[i - 1];
+				mesh_utils::shiftPositions(he, v);
+
+				mat_translation(0,3) = v[0];
+				mat_translation(1, 3) = v[1];
+				mat_translation(2, 3) = v[2];
+				mat_translation(3, 3) = 1;
+				
+				inv_translation = inv(mat_translation);
+				for (int j = 0; j < 4;j++) 
+				{
+					float sum=0;
+					for (int k = 0; k < 4; k++)
+					{
+						sum += inv_translation(j, k)*viewposition[k];
+					}
+					new_view[j] = sum;
+					
+
+				}	
+				viewposition = new_view;
+				
+				
+			}
+			vec3 view;
+			view[0] = viewposition[0];
+			view[1] = viewposition[1];
+			view[2] = viewposition[2];
+		return view;
+	}
 #include <cgv/base/register.h>
 
 /// register a factory to create new cubes
