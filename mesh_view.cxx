@@ -1271,11 +1271,11 @@ public:
 
 		vec3 p;
 		p= view_translation(eye, point_path);
-		
+		HE_Face* f;
 		vec3 t, s;
 		std::cout << " shortest distance before translation to mesh from viewposition: " << mesh_utils::shortest_distance_AD(eye, aabb_tree, t) << std::endl;
 		std::cout << " shortest distance after translation to mesh from viewposition: " << mesh_utils::shortest_distance_AD(p, aabb_tree, s) << std::endl;
-
+		std::cout << " shortest distance after translation to mesh from shift-viewposition: " << mesh_utils::shortest_distance(eye, he,f, t) << std::endl;
 
 
 		
@@ -1291,13 +1291,12 @@ public:
 		viewposition[3] = 1.0;
 
 		mesh_view::fill_animationpath(point_path);
-			for (int i = 1; i < point_path.size(); ++i) {
-				if (i < 1)
-					break;
+			int i =  point_path.size();
+				
 				mat4 mat_translation, inv_translation;
 				mat_translation.identity();
-				vec3 v = point_path[i] - point_path[i - 1];
-				mesh_utils::shiftPositions(he, v);
+				vec3 v = point_path[i - 1] - point_path[0];
+				//mesh_utils::shiftPositions(he, v);
 
 				mat_translation(0,3) = v[0];
 				mat_translation(1, 3) = v[1];
@@ -1319,7 +1318,7 @@ public:
 				viewposition = new_view;
 				
 				
-			}
+			
 			vec3 view;
 			view[0] = viewposition[0];
 			view[1] = viewposition[1];
