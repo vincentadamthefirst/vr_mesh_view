@@ -105,6 +105,8 @@ public:
 	float a, b;
 	float lb, ub;
 
+	mat4 transformation_matrix;
+
 	void apply_translation()
 	{
 		mat3 I;
@@ -280,6 +282,7 @@ public:
 			//create HE_MESH and build bounding box
 			he = generate_from_simple_mesh(M);
 			build_aabbtree_from_triangles(he, aabb_tree);
+			transformation_matrix.identity();
 		}
 		sphere_style.radius = float(0.05*sqrt(B.get_extent().sqr_length() / Vector_count));
 		on_set(&sphere_style.radius);
@@ -1210,8 +1213,8 @@ public:
 		// TODO use newMesh for further tasks
 		std::cout << "surface: " << mesh_utils::surface(he) << std::endl;
 		std::cout << "volume: " << mesh_utils::volume(he) << std::endl;
-		std::cout << "shortest distance to mesh from (0,0,0): " << mesh_utils::shortest_distance(vec3(0, 0, 0), he, f, t) << std::endl;
-		std::cout << "closest point: " << t << std::endl;
+		//std::cout << "shortest distance to mesh from (0,0,0): " << mesh_utils::shortest_distance(vec3(0, 0, 0), he, f, t) << std::endl;
+		//std::cout << "closest point: " << t << std::endl;
 		std::cout << "AD shortest distance to mesh from (0,0,0): " << mesh_utils::shortest_distance_AD(vec3(0, 0, 0), aabb_tree, s) << std::endl;
 		std::cout << "AD closest point: " << s << std::endl;
 
@@ -1220,75 +1223,110 @@ public:
 
 
 	void fill_animationpath(std::vector<vec3>& point_path) {
-		vec3 v1 = vec3(0, 1, 1);
-		vec3 v2 = vec3(0, 1, 3);
-		vec3 v3 = vec3(0, 2, 2);
-		vec3 v4 = vec3(1, 1, 1);
+		vec3 v1 = vec3(0, 0, 1);
+		vec3 v2 = vec3(0, 0, 2);
+		vec3 v3 = vec3(0, 2, 0);
+		/*vec3 v4 = vec3(1, 1, 1);
 		vec3 v5 = vec3(0, 1, 1);
 		vec3 v6 = vec3(0, 1, 5);
 		vec3 v7 = vec3(5, 1, 1);
 		vec3 v8 = vec3(6, 1, 1);
 		vec3 v9 = vec3(0, 1, 8);
 		vec3 v10 = vec3(6, -3, -1);
-		vec3 v11 = vec3(0, -1, -1);
+		vec3 v11 = vec3(0, -1, -1);*/
 		point_path.push_back(v1);
 		point_path.push_back(v2);
 		point_path.push_back(v3);
-		point_path.push_back(v4);
+		/*point_path.push_back(v4);
 		point_path.push_back(v5);
 		point_path.push_back(v6);
 		point_path.push_back(v7);
 		point_path.push_back(v8);
 		point_path.push_back(v9);
 		point_path.push_back(v10);
-		point_path.push_back(v11);
+		point_path.push_back(v11);*/
 	}
+
+
+	// animation of the mesh ... its not viewable here because the vie is alway centered to the mesh
 	void animate() {
 
 		
 		std::vector<vec3> point_path;
+		// points defined by vr user ... now just hard codes
 		mesh_view::fill_animationpath(point_path);
+
+		// at beginning of app this mat4 needs to be set to the identity matrix
+
+
+		// animation along the path ... only translation
 		
 		for (int i = 1; i < point_path.size(); ++i) {
-			if (i < 1)
-				break;
-			dvec3 v = point_path[i] - point_path[i-1];
-			mesh_utils::shiftPositions(he, v);
+			vec3 v = point_path[i] - point_path[i-1];
+			std::cout << "v " << v << std::endl;
+			add_translation(v);
+			// mesh is animated
 			mat3 I;
 			I.identity();
 			M.transform(I, v);
-			have_new_mesh = true;
 			B = M.compute_box();
-			scene_box_outofdate = true;
 			post_redraw();
-			//mesh_view::measurements();
-
 		}
+
+		//for rotation use the function add_rotation to add the roation via axis and angle / angles to the transforamtion_matrix
+		// anmination: look at "void apply_rotation()"
+
 		
 		cgv::math::fvec<double, 3U> eye;
 		eye = view_ptr->get_eye();
-		
-
-		vec3 p;
-		p= view_translation(eye, point_path);
-		HE_Face* f;
-		vec3 t, s;
-		std::cout << " shortest distance before translation to mesh from viewposition: " << mesh_utils::shortest_distance_AD(eye, aabb_tree, t) << std::endl;
-		std::cout << " shortest distance after translation to mesh from viewposition: " << mesh_utils::shortest_distance_AD(p, aabb_tree, s) << std::endl;
-		std::cout << " shortest distance after translation to mesh from shift-viewposition: " << mesh_utils::shortest_distance(eye, he,f, t) << std::endl;
+		std::cout <<"eye " << eye << std::endl;
 
 
-		
+		// for shortest distance or ray triangle intersection the viewpoint( point from where it is measured ) needs to be transformed into the coordinatesystem
+		vec3 z = global_to_local(eye);
+
+		std::cout << "z " << z << std::endl;
 	}
+
+
+	// add translation vector to matrix
+	void add_translation(vec3 v) {
+		mat4 mat_translation;
+		mat_translation.identity();
+		mat_translation.set_col(3, vec4(v, 1));
+		transformation_matrix = transformation_matrix * mat_translation;
+	}
+
+	// add rotation to matrix via angle and axis
+	void add_rotation(float angle, vec3 axis) {
+		mat4 rotationmatrix = rotate4(angle, axis);
+		transformation_matrix = transformation_matrix * rotationmatrix;
+	}
+	// add rotation to matrix via angles
+	void add_rotation(vec3 angles) {
+		mat4 rotationmatrix = rotate4(angles);
+		transformation_matrix = transformation_matrix * rotationmatrix;
+	}
+
+	// returns pos in the local coordinate system
+	vec3 global_to_local(vec3 pos) {
+		mat4 inverse_m = inv(transformation_matrix);
+		std::cout << "transformation_matrix " << transformation_matrix << std::endl;
+		std::cout << "inv " << inverse_m << std::endl;
+		
+
+		vec4 pos_vec4, new_pos;
+		pos_vec4 = vec4(pos, 1.0);		
+		new_pos = inverse_m * pos_vec4;		
+		return vec3(new_pos[0], new_pos[1], new_pos[2]);
+	}
+
 	//use inverse translation mat4 to calculate the view position in local coordinate
 	//return loacl viewposition
-	vec3 view_translation(vec3 view_position, std::vector<vec3> point_path) {
+	/*vec3 view_translation(vec3 view_position, std::vector<vec3> point_path) {
 		
 		vec4 viewposition, new_view;
-		viewposition[0] = view_position[0];
-		viewposition[1] = view_position[1];
-		viewposition[2] = view_position[2];
-		viewposition[3] = 1.0;
+		viewposition = vec4(view_position, 1.0);
 
 		mesh_view::fill_animationpath(point_path);
 			int i =  point_path.size();
@@ -1298,10 +1336,7 @@ public:
 				vec3 v = point_path[i - 1] - point_path[0];
 				//mesh_utils::shiftPositions(he, v);
 
-				mat_translation(0,3) = v[0];
-				mat_translation(1, 3) = v[1];
-				mat_translation(2, 3) = v[2];
-				mat_translation(3, 3) = 1;
+				mat_translation.set_col(3, vec4(v, 1));
 				
 				inv_translation = inv(mat_translation);
 				for (int j = 0; j < 4;j++) 
@@ -1315,16 +1350,14 @@ public:
 					
 
 				}	
-				viewposition = new_view;
-				
-				
+				viewposition = new_view;		
 			
 			vec3 view;
 			view[0] = viewposition[0];
 			view[1] = viewposition[1];
 			view[2] = viewposition[2];
 		return view;
-	}
+	}*/
 
 
 

@@ -159,7 +159,7 @@ namespace mesh_utils {
         }
 
     }
-    //brute force with middle of triangle
+    /*//brute force with middle of triangle
     float shortest_distance(const vec3 point, HE_Mesh* newMesh, HE_Face* & closestFace, vec3& closestPoint) {
         float min_dist = std::numeric_limits<float>::max();
         vec3 p1, p2, p3;
@@ -177,7 +177,7 @@ namespace mesh_utils {
 
         }
         return min_dist;
-    }
+    }*/
 
    
     
@@ -209,12 +209,12 @@ namespace mesh_utils {
         return (closestPoint - point).length();
     }
 
-    void shiftPositions(HE_Mesh* mesh, vec3 direction) {
+    /*void shiftPositions(HE_Mesh* mesh, vec3 direction) {
         for (auto v : *mesh->GetVertices()) {
             v->position += direction;
         }        
         return;
-    }
+    }*/
 	
 
 
