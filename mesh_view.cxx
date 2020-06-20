@@ -78,14 +78,16 @@ public:
 	IlluminationMode illumination_mode;
 
 	//bounding box related member
-	bool show_bounding_box; 
+	bool show_bounding_box;
 	AabbTree<triangle> aabb_tree;
 	std::vector<box3> boxes;
-	
+
 	//ray related members
 	bool show_ray;
 	std::vector<vec3> ray_list;
 	std::vector<rgb> color_list;
+
+	HE_Mesh* he;
 
 	std::string scene_file_name;
 	std::string file_name;
@@ -109,6 +111,8 @@ public:
 	float a, b;
 	float lb, ub;
 	float ray_length;
+
+	mat4 transformation_matrix;
 
 	void apply_translation()
 	{
@@ -141,7 +145,7 @@ public:
 	void apply_rotation()
 	{
 		mat3 R = rotate3<float>(rotation_angles);
-		M.transform(R,vec3(0.0f));
+		M.transform(R, vec3(0.0f));
 		have_new_mesh = true;
 		B = M.compute_box();
 		scene_box_outofdate = true;
@@ -201,7 +205,7 @@ public:
 		lb = 0.01f;
 		ub = 2.0f;
 		n = m = 20;
-		
+
 		/*Some vertice points
 		vec3 v00(-0.0305058, 0.11267, 0.03556);
 		vec3 v01(-0.0285034, 0.115434, 0.0336947);
@@ -285,16 +289,16 @@ public:
 	{
 		M.clear();
 		// allocate per Vector colors of type rgb with float components
-		M.ensure_colors(cgv::media::CT_RGB, (n + 1)*m);
+		M.ensure_colors(cgv::media::CT_RGB, (n + 1) * m);
 
 		for (int i = 0; i <= n; ++i) {
 			float y = (float)i / n;
-			float v = (ub - lb)*y + lb;
+			float v = (ub - lb) * y + lb;
 			for (int j = 0; j < m; ++j) {
 				float x = (float)j / m;
-				float u = float(4.0f*M_PI)*x;
+				float u = float(4.0f * M_PI) * x;
 				// add new position to the mesh (function returns position index, which is i*m+j in our case)
-				int vi = M.new_position(vec3(a*cos(u)*sin(v), a*sin(u)*sin(v), a*(cos(v) + log(tan(0.5f*v))) + b * u));
+				int vi = M.new_position(vec3(a * cos(u) * sin(v), a * sin(u) * sin(v), a * (cos(v) + log(tan(0.5f * v))) + b * u));
 				// set color
 				M.set_color(vi, rgb(x, y, 0.5f));
 				// add quad connecting current Vector with previous ones
@@ -359,15 +363,16 @@ public:
 			B = M.compute_box();
 			Vector_count = M.get_nr_positions();
 			//create HE_MESH and build bounding box
-			HE_Mesh* he = generate_from_simple_mesh(M);
+			he = generate_from_simple_mesh(M);
 			build_aabbtree_from_triangles(he, aabb_tree);
+			transformation_matrix.identity();
 		}
-		sphere_style.radius = float(0.05*sqrt(B.get_extent().sqr_length() / Vector_count));
+		sphere_style.radius = float(0.05 * sqrt(B.get_extent().sqr_length() / Vector_count));
 		on_set(&sphere_style.radius);
 		sphere_hidden_style.radius = sphere_style.radius;
 		on_set(&sphere_hidden_style.radius);
 
-		cone_style.radius = 0.5f*sphere_style.radius;
+		cone_style.radius = 0.5f * sphere_style.radius;
 		if (cgv::utils::file::get_file_name(file_name) == "Max-Planck_lowres.obj")
 			construct_mesh_colors();
 		return true;
@@ -414,7 +419,7 @@ public:
 		// check whether to pick a previously defined point
 		pick_point_index = -1;
 		double pick_dist = 0;
-		double pick_dist_threshold = sphere_style.radius*sphere_style.radius_scale;
+		double pick_dist_threshold = sphere_style.radius * sphere_style.radius_scale;
 		for (int i = 0; i < (int)pick_points.size(); ++i) {
 			double dist = (pick_points[i] - vec3(pick_point)).length();
 			if (dist < pick_dist_threshold) {
@@ -477,7 +482,7 @@ public:
 			post_recreate_gui();
 		post_redraw();
 	}
-	bool read_scene(const std::string& scene_file_name) 
+	bool read_scene(const std::string& scene_file_name)
 	{
 		std::ifstream is(scene_file_name);
 		if (is.fail())
@@ -510,9 +515,9 @@ public:
 			ss.get(c);
 			switch (toupper(c)) {
 			case 'M':
-				 file_name = line.substr(3, line.size() - 4);
-				 on_set(&file_name);
-				 break;
+				file_name = line.substr(3, line.size() - 4);
+				on_set(&file_name);
+				break;
 			case 'S':
 				ss >> pos >> radius >> color;
 				if (!ss.fail()) {
@@ -561,13 +566,13 @@ public:
 			if (ke.get_action() != KA_RELEASE) {
 				switch (ke.get_key()) {
 				case 'V': show_vertices = !show_vertices;  on_set(&show_vertices);  return true;
-				case 'W': show_wireframe= !show_wireframe; on_set(&show_wireframe); return true;
+				case 'W': show_wireframe = !show_wireframe; on_set(&show_wireframe); return true;
 				case 'F': show_surface = !show_surface;   on_set(&show_surface);   return true;
 				case 'B': show_bounding_box = !show_bounding_box;   on_set(&show_bounding_box);   return true;
-				case 'S' : add_sphere(ke.get_modifiers() == EM_SHIFT); return true;
+				case 'S': add_sphere(ke.get_modifiers() == EM_SHIFT); return true;
 				case 'O': add_oriented_plane(ke.get_modifiers() == EM_SHIFT); return true;
 				case 'C': add_center(ke.get_modifiers() == EM_SHIFT); return true;
-				case KEY_Back_Space : 
+				case KEY_Back_Space:
 					if (ke.get_modifiers() == EM_SHIFT) {
 						if (sphere_positions.empty())
 							break;
@@ -609,7 +614,7 @@ public:
 			cgv::render::context* ctx = get_context();
 
 			switch (me.get_action()) {
-			case MA_PRESS: 
+			case MA_PRESS:
 				if (me.get_button() == MB_LEFT_BUTTON && me.get_modifiers() == EM_CTRL) {
 					in_picking = true;
 					click_is_pick = true;
@@ -618,7 +623,7 @@ public:
 
 					//Ray-Mesh Intersection Debug using HE_Mesh and HE_Face 
 					//By pressing CTRL and mouse left button at the same time, a ray is created and the ray's intersection with the mesh is debugged
-					
+
 					unsigned x = me.get_x();
 					unsigned y = me.get_y();
 					vec3 pos(0.0f);
@@ -639,10 +644,10 @@ public:
 					bool boxIntersection = ray_intersection::rayTreeIntersect(mouse_ray, aabb_tree, t);
 					auto stop = std::chrono::high_resolution_clock::now();
 					auto duration = std::chrono::duration<double>(stop - start);
-					std::cout <<"Duration using aabb_tree/bounding box ray intersection: "<< duration.count() << std::endl;
+					std::cout << "Duration using aabb_tree/bounding box ray intersection: " << duration.count() << std::endl;
 
 					std::cout << "boxIntersection: " << boxIntersection << std::endl;
-					std::cout << "Box Intersection t: " << t<< std::endl;
+					std::cout << "Box Intersection t: " << t << std::endl;
 					std::cout << "Intersection point: " << ray_intersection::getIntersectionPoint(mouse_ray, t) << std::endl;
 
 					HE_Mesh* mesh = generate_from_simple_mesh(M);
@@ -656,7 +661,7 @@ public:
 						bool checker = ray_intersection::rayMeshIntersect(mouse_ray, mesh, t);
 						auto stop2 = std::chrono::high_resolution_clock::now();
 						auto duration2 = std::chrono::duration<double>(stop2 - start2);
-						
+
 
 						if (checker) {
 							//push back origin point and intersection point into the list 
@@ -675,16 +680,16 @@ public:
 							std::cout << "Intersected face v1: " << p2 << std::endl;
 							std::cout << "Intersected face v2: " << p3 << std::endl;
 							delete intersectedFace;
-							
+
 
 						}
 						else
 							std::cout << "No intersection with the mesh" << std::endl;
-						std::cout <<"Duration using regular HE_Mesh-all triangles intersection: "<< duration2.count() << std::endl;
+						std::cout << "Duration using regular HE_Mesh-all triangles intersection: " << duration2.count() << std::endl;
 						delete mesh;
-						
+
 					}
-					
+
 					//END OF DEBUG
 
 					if (on_pick(me))
@@ -699,7 +704,7 @@ public:
 				}
 				click_is_pick = false;
 				break;
-			case MA_RELEASE :
+			case MA_RELEASE:
 				if (me.get_button() == MB_LEFT_BUTTON && me.get_modifiers() == EM_CTRL) {
 					if (click_is_pick) {
 						click_is_pick = false;
@@ -717,7 +722,7 @@ public:
 					return true;
 				}
 				break;
-			case MA_DRAG :
+			case MA_DRAG:
 				if (in_picking) {
 					on_drag(me);
 					click_is_pick = false;
@@ -768,7 +773,7 @@ public:
 		const vec3& center = pick_points[pick_points.size() - 2];
 		const vec3& p = pick_points[pick_points.size() - 1];
 		sphere_positions.push_back(center);
-		sphere_radii.push_back((center-p).length());
+		sphere_radii.push_back((center - p).length());
 		sphere_colors.push_back(rgba(0, 1, 1, 0.7f));
 		if (collapse) {
 			pick_points.pop_back();
@@ -792,7 +797,7 @@ public:
 			pick_colors.clear();
 		}
 		pick_points.push_back(center);
-		pick_colors.push_back(rgb(1,0,1));
+		pick_colors.push_back(rgb(1, 0, 1));
 		pick_point_index = -1;
 		post_redraw();
 	}
@@ -800,8 +805,8 @@ public:
 	{
 		add_decorator("mesh", "heading", "level=2");
 		add_gui("scene_file_name", scene_file_name, "file_name",
-				"open=true;open_title='open scene file';filter='scene (scn):*.scn|all files:*.*';"
-				"save=true;save_title='save scene file';w=140");
+			"open=true;open_title='open scene file';filter='scene (scn):*.scn|all files:*.*';"
+			"save=true;save_title='save scene file';w=140");
 		add_gui("file_name", file_name, "file_name",
 			"open=true;title='open obj file';filter='mesh (obj):*.obj|all files:*.*';"
 			"save=true;save_title='save obj file';w=140");
@@ -823,11 +828,15 @@ public:
 			align("\a");
 			add_decorator("mesh data structure", "heading", "level=3");
 			connect_copy(add_button("generate mesh")->click, rebind(this, &mesh_view::debug_mesh_generation));
+			add_decorator("Animation", "heading", "level=3");
+			connect_copy(add_button("Start Animation")->click, rebind(this, &mesh_view::animate));
+			add_decorator("Measurements", "heading", "level=3");
+			connect_copy(add_button("show")->click, rebind(this, &mesh_view::measurements));
 			align("\b");
 		}
-	
-		
-		
+
+
+
 
 		if (begin_tree_node("transform", translate_vector, true)) {
 			align("\a");
@@ -965,7 +974,7 @@ public:
 		}
 
 
-		show = begin_tree_node("ray", show_ray, false, "options='w=40';align=' '");
+		show = begin_tree_node("ray", show_ray, true, "options='w=40';align=' '");
 		add_member_control(this, "show", show_ray, "toggle", "w=42;shortcut='w'", " ");
 
 		//add bounding_box button
@@ -993,7 +1002,7 @@ public:
 		ref_sphere_renderer(ctx, -1);
 		ref_rounded_cone_renderer(ctx, -1);
 	}
-	void compute_plane_points(const vec4& pln, std::vector<vec3>& P, std::vector<vec3>* N_ptr=0, std::vector<rgba>* C_ptr=0)
+	void compute_plane_points(const vec4& pln, std::vector<vec3>& P, std::vector<vec3>* N_ptr = 0, std::vector<rgba>* C_ptr = 0)
 	{
 		const vec3& nml = reinterpret_cast<const vec3&>(pln);
 		vec3 tmp = nml;
@@ -1078,7 +1087,7 @@ public:
 		}
 		else
 			glDisable(GL_CULL_FACE);
-		
+
 		// choose a shader program and configure it based on current settings
 		shader_program& prog = mesh_prog;
 		// enable clip planes
@@ -1142,7 +1151,7 @@ public:
 			}
 			//render bounding box
 			if (show_bounding_box) {
-				
+
 				box_wire_renderer  box_render;
 				box_render.init(ctx);
 				visit_tree(aabb_tree.Root());
@@ -1153,8 +1162,8 @@ public:
 					glDrawArrays(GL_POINTS, 0, (GLsizei)boxes.size());
 					box_render.disable(ctx);
 				}
-				
-				
+
+
 			}
 			if (show_ray) {
 				debug_render_ray(ctx);
@@ -1269,7 +1278,7 @@ public:
 			glDisable(GL_DEPTH_TEST);
 			vec3 p = pick_points[pick_point_index];
 			if (view_ptr)
-				p += 1.5f*sphere_style.radius*sphere_style.radius_scale*vec3(view_ptr->get_view_up_dir());
+				p += 1.5f * sphere_style.radius * sphere_style.radius_scale * vec3(view_ptr->get_view_up_dir());
 			std::stringstream ss;
 			ss << "[" << p << "]";
 			ss.flush();
@@ -1336,7 +1345,7 @@ public:
 
 		// construct boundaries
 		for (auto edge_it : *newMesh->GetHalfEdges()) {
-			if(edge_it ->twin == nullptr)
+			if (edge_it->twin == nullptr)
 				newMesh->AddBoundary(edge_it);
 		}
 		uniqueTriples.clear();
@@ -1344,38 +1353,36 @@ public:
 		vectorIndices.clear();
 
 
-		
+
 		return newMesh;
 	}
-
-	void debug_mesh_generation() {
-		auto generated_mesh = generate_from_simple_mesh(M);
-
-		if (generated_mesh == nullptr) return;
-
-		vec3 t;
-		HE_Face* f;
-		// TODO use newMesh for further tasks
-		std::cout << "surface: " << mesh_utils::surface(generated_mesh) << std::endl;
-		std::cout << "volume: " << mesh_utils::volume(generated_mesh) << std::endl;
-		std::cout << "shortest distance to mesh from (0,0,0): " << mesh_utils::shortest_distance(vec3(0, 0, 0), generated_mesh,f,t) << std::endl;
-		std::cout << "closest point: " << t << std::endl;
-		
-
-		return;
-
-		for (auto face : *generated_mesh->GetFaces()) {
-			std::cout << "Face: " << std::endl;
-			for (auto vertex : generated_mesh->GetVerticesForFace(face)) {
-				std::cout << "\t" << vertex->position.x() << ", " << vertex->position.y() << ", " << vertex->position.z() << "\n" << std::endl;
-			}
-		}
-
-		delete generated_mesh;
+	/*
+void render_ray() {
+	cgv::render::context* ctx = get_context();
+	vec3 ray_orgin{ 0, 0, 0 };
+	vec3 ray_intersection{ 2,2,2 };
+	std::vector<vec3> p;
+	std::vector<rgb> color;
+	p.push_back(ray_orgin);
+	p.push_back(ray_intersection);
+	rgb c(1, 0, 0);
+	color.push_back(c);
+	color.push_back(c);
+	normal_renderer line_renderer;
+	line_renderer.init(*ctx);
+	line_renderer.set_position_array(*ctx, p);
+	line_renderer.set_color_array(*ctx, color);
+	if (line_renderer.validate_and_enable(*ctx)) {
+		//line_renderer.enable(*ctx);
+		glDrawArrays(GL_LINES, 0, (GLsizei)p.size());
+		line_renderer.disable(*ctx);
 	}
+
+}*/
+
 	void debug_render_ray(context& ctx) {
-		
-		
+
+
 		if (!ray_list.empty()) {
 			auto& prog = ctx.ref_default_shader_program();
 			int ci = prog.get_color_index();
@@ -1394,8 +1401,179 @@ public:
 			std::cout << "No ray intersection." << std::endl;
 		}
 	}
-	
-		
+
+	void debug_mesh_generation() {
+		auto generated_mesh = generate_from_simple_mesh(M);
+
+		if (generated_mesh == nullptr) return;
+		// TODO use newMesh for further tasks
+		return;
+
+		for (auto face : *generated_mesh->GetFaces()) {
+			std::cout << "Face: " << std::endl;
+			for (auto vertex : generated_mesh->GetVerticesForFace(face)) {
+				std::cout << "\t" << vertex->position.x() << ", " << vertex->position.y() << ", " << vertex->position.z() << "\n" << std::endl;
+			}
+		}
+
+		delete generated_mesh;
+	}
+
+
+
+
+	void measurements() {
+		vec3 t, s;
+		HE_Face* f;
+		// TODO use newMesh for further tasks
+		std::cout << "surface: " << mesh_utils::surface(he) << std::endl;
+		std::cout << "volume: " << mesh_utils::volume(he) << std::endl;
+		//std::cout << "shortest distance to mesh from (0,0,0): " << mesh_utils::shortest_distance(vec3(0, 0, 0), he, f, t) << std::endl;
+		//std::cout << "closest point: " << t << std::endl;
+		std::cout << "AD shortest distance to mesh from (0,0,0): " << mesh_utils::shortest_distance_AD(vec3(0, 0, 0), aabb_tree, s) << std::endl;
+		std::cout << "AD closest point: " << s << std::endl;
+
+
+	}
+
+
+	void fill_animationpath(std::vector<vec3>& point_path) {
+		vec3 v1 = vec3(0, 0, 1);
+		vec3 v2 = vec3(0, 0, 2);
+		vec3 v3 = vec3(0, 2, 0);
+		/*vec3 v4 = vec3(1, 1, 1);
+		vec3 v5 = vec3(0, 1, 1);
+		vec3 v6 = vec3(0, 1, 5);
+		vec3 v7 = vec3(5, 1, 1);
+		vec3 v8 = vec3(6, 1, 1);
+		vec3 v9 = vec3(0, 1, 8);
+		vec3 v10 = vec3(6, -3, -1);
+		vec3 v11 = vec3(0, -1, -1);*/
+		point_path.push_back(v1);
+		point_path.push_back(v2);
+		point_path.push_back(v3);
+		/*point_path.push_back(v4);
+		point_path.push_back(v5);
+		point_path.push_back(v6);
+		point_path.push_back(v7);
+		point_path.push_back(v8);
+		point_path.push_back(v9);
+		point_path.push_back(v10);
+		point_path.push_back(v11);*/
+	}
+
+	// animation of the mesh ... its not viewable here because the vie is alway centered to the mesh
+	void animate() {
+
+
+		std::vector<vec3> point_path;
+		// points defined by vr user ... now just hard codes
+		mesh_view::fill_animationpath(point_path);
+
+		// at beginning of app this mat4 needs to be set to the identity matrix
+
+
+		// animation along the path ... only translation
+
+		for (int i = 1; i < point_path.size(); ++i) {
+			vec3 v = point_path[i] - point_path[i - 1];
+			std::cout << "v " << v << std::endl;
+			add_translation(v);
+			// mesh is animated
+			mat3 I;
+			I.identity();
+			M.transform(I, v);
+			
+			B = M.compute_box();
+			
+			post_redraw();
+
+		}
+
+
+		//for rotation use the function add_rotation to add the roation via axis and angle / angles to the transforamtion_matrix
+		// anmination: look at "void apply_rotation()"
+
+		cgv::math::fvec<double, 3U> eye;
+		eye = view_ptr->get_eye();
+
+		std::cout << "eye " << eye << std::endl;
+
+		// for shortest distance or ray triangle intersection the viewpoint( point from where it is measured ) needs to be transformed into the coordinatesystem
+		vec3 z = global_to_local(eye);
+
+		std::cout << "z " << z << std::endl;
+
+	}
+
+	// add translation vector to matrix
+	void add_translation(vec3 v) {
+		mat4 mat_translation;
+		mat_translation.identity();
+		mat_translation.set_col(3, vec4(v, 1));
+		transformation_matrix = transformation_matrix * mat_translation;
+	}
+
+	// add rotation to matrix via angle and axis
+	void add_rotation(float angle, vec3 axis) {
+		mat4 rotationmatrix = rotate4(angle, axis);
+		transformation_matrix = transformation_matrix * rotationmatrix;
+	}
+	// add rotation to matrix via angles
+	void add_rotation(vec3 angles) {
+		mat4 rotationmatrix = rotate4(angles);
+		transformation_matrix = transformation_matrix * rotationmatrix;
+	}
+
+	// returns pos in the local coordinate system
+	vec3 global_to_local(vec3 pos) {
+		mat4 inverse_m = inv(transformation_matrix);
+		std::cout << "transformation_matrix " << transformation_matrix << std::endl;
+		std::cout << "inv " << inverse_m << std::endl;
+
+
+		vec4 pos_vec4, new_pos;
+		pos_vec4 = vec4(pos, 1.0);
+		new_pos = inverse_m * pos_vec4;
+		return vec3(new_pos[0], new_pos[1], new_pos[2]);
+	}
+
+	//use inverse translation mat4 to calculate the view position in local coordinate
+	//return loacl viewposition
+	/*vec3 view_translation(vec3 view_position, std::vector<vec3> point_path) {
+
+		vec4 viewposition, new_view;
+		viewposition = vec4(view_position, 1.0);
+		mesh_view::fill_animationpath(point_path);
+		int i = point_path.size();
+		mat4 mat_translation, inv_translation;
+		mat_translation.identity();
+		vec3 v = point_path[i - 1] - point_path[0];
+		//mesh_utils::shiftPositions(he, v);
+		mat_translation.set_col(3, vec4(v, 1));
+
+		inv_translation = inv(mat_translation);
+		for (int j = 0; j < 4; j++)
+		{
+			float sum = 0;
+			for (int k = 0; k < 4; k++)
+			{
+				sum += inv_translation(j, k) * viewposition[k];
+			}
+			new_view[j] = sum;
+			}
+		viewposition = new_view;
+
+		vec3 view;
+		view[0] = viewposition[0];
+		view[1] = viewposition[1];
+		view[2] = viewposition[2];
+		return view;
+	}*/
+
+
+
+
 };
 
 #include <cgv/base/register.h>
