@@ -1013,7 +1013,6 @@ HE_Mesh* vr_mesh_view::generate_from_simple_mesh(mesh_type M) {
 		unsigned int vectorBIndex = uniqueTriples.at(triangleBuffer.at(i + 1))[0];
 		unsigned int vectorCIndex = uniqueTriples.at(triangleBuffer.at(i + 2))[0];
 
-
 		// adding the 3 vectors
 		auto vectorA = newMesh->AddVector(vectorAIndex, originalPositions.at(vectorAIndex));
 		auto vectorB = newMesh->AddVector(vectorBIndex, originalPositions.at(vectorBIndex));
@@ -1092,9 +1091,6 @@ void vr_mesh_view::add_rotation(mat3 r3) {
 // returns pos in the local coordinate system
 vec3 vr_mesh_view::global_to_local(vec3 pos) {
 	mat4 inverse_m = inv(transformation_matrix);
-	
-	//std::cout << "transformation_matrix " << transformation_matrix << std::endl;
-	//std::cout << "inv " << inverse_m << std::endl;
 
 	vec4 pos_vec4, new_pos;
 	pos_vec4 = vec4(pos, 1.0);
