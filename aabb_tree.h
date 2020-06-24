@@ -65,7 +65,6 @@ public:
 			return nullptr;
 		}
 		std::vector<vec3> get_triangle() {
-			primitives_begin->show();
 			return primitives_begin->get();
 		}
 	};
