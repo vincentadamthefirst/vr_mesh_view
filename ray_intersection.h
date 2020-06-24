@@ -13,6 +13,8 @@ namespace ray_intersection {
 	struct ray {
 		vec3 origin;
 		vec3 direction;
+
+		ray(vec3 org, vec3 dir) : origin(org), direction(dir) {};
 	};
 	bool isInsideTriangle(const vec3& v0, const vec3& v1, const vec3& v2, const vec3& p)
 	{
@@ -114,8 +116,7 @@ namespace ray_intersection {
 		if (intersect)
 			return temp_face;
 		else {
-			std::cout << "No intersection, returning face object anyway" << std::endl;
-				return temp_face;
+			return temp_face;
 		}
 	}
 	
@@ -174,7 +175,6 @@ namespace ray_intersection {
 				if (rayTriangleIntersect(r, triangle.at(0), triangle.at(1), triangle.at(2), temp2))
 					if (temp2 != 0)
 						if (temp == 0 || temp2 < temp){
-							std::cout << "Changed from: " << temp << " to " << temp2 << std::endl;
 							temp = temp2;
 						}	
 			}
@@ -189,9 +189,7 @@ namespace ray_intersection {
 	bool rayTreeIntersect(const ray& r, AabbTree<triangle>& tree, float& t)
 	{
 		AabbTree<triangle>::AabbNode* rootNode = tree.Root();
-		std::cout << "Before ray tree intersect: " << t << std::endl;
 		rayNodeIntersect(r, rootNode, t);
-		std::cout << "After ray tree intersect: " << t << std::endl;
 		if (t > 0) return true;
 		else return false;
 	}
