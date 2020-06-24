@@ -8,7 +8,7 @@
 typedef typename cgv::math::fvec<float, 3> vec3;
 typedef typename cgv::render::render_types::mat3 mat3;
 
-struct OcculusController {
+struct VrController {
 	// buttons of the controller
 	bool yButton;
 	bool yChanged;
