@@ -242,6 +242,8 @@ vr_mesh_view::vr_mesh_view()
 	// if a new mesh has been loaded
 	have_new_mesh = false;
 
+	show_smoothing = false;
+
 	// ONLY in code changeable values
 	show_floor = true;
 	show_walls = false;
@@ -876,10 +878,13 @@ void vr_mesh_view::create_gui() {
 	add_gui("file_name", file_name, "file_name",
 		"open=true;title='open obj file';filter='mesh (obj):*.obj|all files:*.*';"
 		"save=true;save_title='save obj file';w=140");
-
+	align("\a");
+	add_decorator("Smoothing", "heading", "level=3");
+	connect_copy(add_button("apply")->click, rebind(this, &vr_mesh_view::applySmoothing));
+	align("\b");
+	
 	if (begin_tree_node("mesh options", translate_vector, false, "options='w140';align=' '")) {
 		align("\a");
-
 		auto show = begin_tree_node("vertices", show_vertices, false, "options='w=100';align=' '");
 		add_member_control(this, "show", show_vertices, "toggle", "w=42;shortcut='w'", " ");
 		add_member_control(this, "", sphere_style.surface_color, "", "w=42");
@@ -938,9 +943,13 @@ void vr_mesh_view::create_gui() {
 					}
 				}
 			}
+
+			
 			align("\b");
 			end_tree_node(show_surface);
 		}
+		//show = begin_tree_node("smoothing", smoothing, false, "options='w=100';align=' '");
+		//add_member_control(this, "show", smoothing, "toggle", "w=42;shortcut='s'", " ");
 
 		end_tree_node(translate_vector);
 	}
@@ -1100,6 +1109,27 @@ vec3 vr_mesh_view::global_to_local(vec3 pos) {
 	pos_vec4 = vec4(pos, 1.0);
 	new_pos = inverse_m * pos_vec4;
 	return vec3(new_pos[0], new_pos[1], new_pos[2]);
+}
+
+//updates Simple mesh from HE_Mesh
+void vr_mesh_view::updateSimpleMesh() {
+	auto originalPositions = M.get_positions();
+
+	for (auto v : *he->GetVertices()) {
+		//std::cout << M.position(v->originalIndex) << ", " << v->position << std::endl;;
+		M.position(v->originalIndex) = v->position;
+	}
+	M.compute_vertex_normals();
+	B = M.compute_box();
+	have_new_mesh = true;
+	post_redraw();
+}
+
+void vr_mesh_view::applySmoothing() {
+	if (M.get_positions().empty()) return;
+	he = mesh_utils::smoothing_laplacian(he);
+	updateSimpleMesh();
+	build_aabbtree_from_triangles(he, aabb_tree);
 }
 
 

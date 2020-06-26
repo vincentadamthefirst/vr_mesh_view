@@ -70,6 +70,8 @@ public:
 	std::vector<HE_Face*> GetAdjacentFaces(HE_Face* face);
 	/// return vertices making up a face (for now only triangles supported)
 	std::vector<HE_Vertex*> GetVerticesForFace(HE_Face* face);
+	/// returns neighbor vertices fo a given Vertex
+	std::vector<HE_Vertex*> GetNeighborVertices(HE_Vertex* vertex);
 
 	/// return true if the mesh is closed
 	bool isClosed() { return boundaryFaces.empty() ? true : false; }
@@ -81,6 +83,7 @@ private:
 	std::vector<HE_Edge*> halfEdges;
 	std::vector<HE_Face*> faces;
 	std::vector<HE_Face*> boundaryFaces;
+	std::vector<HE_Vertex*> boundaryVertices;
 
 	std::map<unsigned int, HE_Vertex*> originalVectorIndices;
 	std::map<int, HE_Edge*> originalEdges;

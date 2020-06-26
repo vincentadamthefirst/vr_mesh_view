@@ -154,6 +154,8 @@ protected:
 	bool show_environment_boxes;
 	bool show_colored_boxes;
 
+	bool show_smoothing;
+
 	// gui object
 	vec3 translate_vector;
 
@@ -228,6 +230,9 @@ public:
 	vec3 global_to_local(vec3 pos);
 
 	void scaleMesh(mesh_type& M, float scale);
+
+	void updateSimpleMesh();
+	void applySmoothing();
 };
 
 ///@}
