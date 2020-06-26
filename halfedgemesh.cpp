@@ -43,7 +43,7 @@ HE_Edge* HE_Mesh::AddHalfEdge(HE_Vertex* origin, HE_Vertex* dest, HE_Face* face,
 		newHalfEdge->twin = possibleTwin->second;
 		possibleTwin->second->twin = newHalfEdge;
 	}
- 
+	origin->outgoing = newHalfEdge;
 	halfEdges.push_back(newHalfEdge);
 	originalEdges.insert(std::make_pair(CantorPairing(origin->originalIndex, dest->originalIndex), newHalfEdge));
 	return newHalfEdge;
@@ -66,6 +66,8 @@ std::vector<HE_Face*> HE_Mesh::GetAdjacentFaces(HE_Face* face) {
 }
 
 HE_Face* HE_Mesh::AddBoundary(HE_Edge* edge) {
+	HE_Vertex* v = edge->origin;
+	boundaryVertices.push_back(v);
 	HE_Face* f = edge->face;
 	// f is not a element of boundaryFaces
 	if (std::find(boundaryFaces.begin(), boundaryFaces.end(), f) == boundaryFaces.end())
@@ -80,5 +82,54 @@ std::vector<HE_Vertex*> HE_Mesh::GetVerticesForFace(HE_Face* face) {
 	toReturn.push_back(face->adjacent->next->origin);
 	toReturn.push_back(face->adjacent->next->next->origin);
 
+	return toReturn;
+}
+
+
+
+std::vector<HE_Vertex*> HE_Mesh::GetNeighborVertices(HE_Vertex* vertex) {
+	bool loopReverse = false;
+	std::vector<HE_Vertex*> toReturn;
+	HE_Edge* e1 = vertex->outgoing;
+	auto e2 = e1->twin;
+	//boundary
+	if (e2 == nullptr) {
+		// loop in andere Richtung#
+		loopReverse = true;
+	}
+	
+	int i = 0;
+	//normal loop
+	if (!loopReverse) {
+		HE_Edge* start = e2;
+		do {
+			toReturn.push_back(e2->origin);
+			auto e2_temp = e2->next->twin;
+			//boundary
+			if (e2_temp == nullptr) {
+				// loop in andere Richtung
+				toReturn.push_back(e2->next->next->origin);
+				loopReverse = true;
+				break;
+			}
+			else {
+				e2 = e2_temp;
+			}
+			//std::cout << i++ << std::endl;
+		} while (e2 != start);
+	}
+	
+	//loop reverse, used if there is a boundary 
+	if (loopReverse) {
+		e2 = e1->next->next;
+		while(true) {
+			toReturn.push_back(e2->origin);
+			if (e2->twin == nullptr)
+				break;
+			e2 = e2->twin->next->next;
+			//std::cout << i++ << std::endl;
+		} 
+
+	}
 	return toReturn;
 }

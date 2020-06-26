@@ -208,5 +208,27 @@ namespace mesh_utils {
         return (closestPoint - point).length();
     }
 
+    HE_Mesh* smoothing_laplacian(HE_Mesh* m) {
+        std::vector<vec3> newPositions;
+        
+        for (HE_Vertex* v : *m->GetVertices()) {
+            int number = 0;
+            vec3 newpos = vec3(0, 0, 0);
+            for (HE_Vertex* neighbor: m->GetNeighborVertices(v)) {
+                number++;
+                newpos += neighbor->position;
+            }
+            newpos /= number;
+            newPositions.push_back(newpos);
+        }
+        int i = 0;
+        for (HE_Vertex* v : *m->GetVertices()) {
+            //std::cout << i << " " << v->position << ", " << newPositions[i] << std::endl;
+            v->position = newPositions[i];
+            ++i;
+            
+        }
+        return m;
+    }
 
 }
