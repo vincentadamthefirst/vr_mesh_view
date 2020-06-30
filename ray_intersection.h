@@ -119,6 +119,7 @@ namespace ray_intersection {
 			return temp_face;
 		}
 	}
+
 	
 	bool rayBoxIntersect(const ray& r, const box3& b)
 	{
@@ -194,6 +195,36 @@ namespace ray_intersection {
 		else return false;
 	}
 	
+	//Method that checks if the intersection point (ray-mesh) intersects with a given array of vertices, returns the intersected vertex
+	bool vertexIntersection(const vec3& intersectPoint, const std::vector<HE_Vertex*> vertices, HE_Vertex*& intersectedVertex)
+	{
+		//This constant might need a change depending on the vertice allignment of loaded simple mesh. Precision of vertex intersection can be obtained easily
+		//using distance debugging on line 217
+		float blckrn_constant = 0.00025;
+		//This constant adjusts the required minimum length between the intersection point and the center position of the intersected vertex
+
+		float tmp_distance = 500;
+		bool intersect = false;
+		for (int i = 0; i < size(vertices); i++) {
+			//Distance between two vec3
+			float x = intersectPoint.x() - vertices[i]->position.x();
+			float y = intersectPoint.y() - vertices[i]->position.y();
+			float z = intersectPoint.z() - vertices[i]->position.z();
+
+			float distance = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
+
+			if (distance < blckrn_constant) {
+				//std::cout << "Intersection happened! Distance: " << distance<< std::endl;
+				if (distance < tmp_distance) {
+					tmp_distance = distance;
+					intersectedVertex = vertices[i];
+				}
+				intersect = true;
+			}
+		}
+
+		return intersect;
+	}
 	vec3 getIntersectionPoint(const ray& r, const float& t)
 	{
 		return r.origin + t * r.direction;
