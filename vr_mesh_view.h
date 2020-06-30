@@ -168,7 +168,13 @@ protected:
 	// if the controller buttons are pressed (based on oculus)
 	bool bButtonIsPressed = false;
 	bool yButtonIsPressed = false;
-
+	//tessellation 
+	bool rightButton1IsPressed = false;
+	int nr_tes_intersection = 0;
+	//vertex manipulation
+	bool leftButton1IsPressed = false;
+	bool isVertexPicked = false;
+	HE_Vertex* intersectedVertex;
 	// positions only get written when y and b key (oculus) are held
 	vec3 rightControllerPosition;
 	vec3 leftControllerPosition;
@@ -236,6 +242,8 @@ public:
 
 	void updateSimpleMesh();
 	void applySmoothing();
+	void tessellation(const vec3& origin, const vec3& direction);
+	void vertex_manipulate(HE_Vertex* vertex, vec3 new_pos);
 };
 
 ///@}
