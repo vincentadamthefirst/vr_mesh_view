@@ -73,6 +73,9 @@ public:
 	/// returns neighbor vertices fo a given Vertex
 	std::vector<HE_Vertex*> GetNeighborVertices(HE_Vertex* vertex);
 
+	// changes the position of a vertex
+	bool changeVertexPos(HE_Vertex* vertex, vec3 new_pos);
+
 	/// return true if the mesh is closed
 	bool isClosed() { return boundaryFaces.empty() ? true : false; }
 	/// TODO
