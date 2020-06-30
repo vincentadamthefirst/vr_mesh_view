@@ -302,7 +302,17 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 			case vr::VR_LEFT_MENU:
 				yButtonIsPressed = true;
 				break;
+			case vr::VR_RIGHT_BUTTON1:
+				vec3 origin, direction;
+				rightButton1IsPressed = true;
+				vrke.get_state().controller[1].put_ray(&origin(0), &direction(0));
+				tessellation(origin, direction);
+				break;
+			case vr::VR_LEFT_BUTTON1:
+				leftButton1IsPressed = true;
+				break;
 			}
+	
 		}
 		else if (vrke.get_action() == cgv::gui::KA_RELEASE) {
 			switch (vrke.get_key()) {
@@ -311,6 +321,20 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				break;
 			case vr::VR_LEFT_MENU:
 				yButtonIsPressed = false;
+				break;
+			case vr::VR_RIGHT_BUTTON1:
+				rightButton1IsPressed = false;
+				break;
+			case vr::VR_LEFT_BUTTON1:
+				leftButton1IsPressed = false;
+				if (isVertexPicked) {
+					M.compute_vertex_normals();
+					B = M.compute_box();
+					have_new_mesh = true;
+					post_redraw();
+					build_aabbtree_from_triangles(he, aabb_tree);
+				}
+				isVertexPicked = false;			
 				break;
 			}
 		}
@@ -367,9 +391,10 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					if (intersection_controller_indices[i] != ci)
 						continue;
 
+					vec3 new_intersection = origin + intersection_offsets[i] * direction;
+
 					if (ci == 1) { // right controller
 						// get translation between previous and current intersection point
-						vec3 new_intersection = origin + intersection_offsets[i] * direction;
 						vec3 translation = new_intersection - intersection_points[i];
 
 						intersection_points[i] = new_intersection;
@@ -380,25 +405,50 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 						dummyRotation.identity();
 
 						M.transform(dummyRotation, translation);
+
+						// mesh is animated
+						B = M.compute_box();
+						have_new_mesh = true;
+						post_redraw();
 					}
 
 					if (ci == 0) { // left controller
-						mat3 orientation = vrpe.get_orientation();
-						mat3 last_orientation = vrpe.get_last_orientation();
-						mat3 rotation = inv(last_orientation) * orientation;
+						//Vertex Manipulation
+						if (leftButton1IsPressed) {
+							if (isVertexPicked) {
+								vec3 last_pos = vrpe.get_last_position();
+								vec3 pos = vrpe.get_position();
+								vr_mesh_view::vertex_manipulate(intersectedVertex, pos - last_pos);
+							}
+							else {
+								std::vector<HE_Vertex*> vertices_of_face = he->GetVerticesForFace(ray_intersection::getIntersectedFace(ray_intersection::ray(origin, direction), he));
+								if (ray_intersection::vertexIntersection(new_intersection, vertices_of_face, intersectedVertex)) {
+									isVertexPicked = true;
+									vec3 last_pos = vrpe.get_last_position();
+									vec3 pos = vrpe.get_position();
+									vr_mesh_view::vertex_manipulate(intersectedVertex, pos - last_pos);
+								}
+							}
+						}
+						//Rotation
+						else {
+							mat3 orientation = vrpe.get_orientation();
+							mat3 last_orientation = vrpe.get_last_orientation();
+							mat3 rotation = inv(last_orientation) * orientation;
 
-						add_rotation(inv(rotation));
+							add_rotation(inv(rotation));
 
-						vec3 dummyTranslation;
-						dummyTranslation.zeros();
+							vec3 dummyTranslation;
+							dummyTranslation.zeros();
 
-						M.transform(inv(rotation), dummyTranslation);
+							M.transform(inv(rotation), dummyTranslation);
+
+							// mesh is animated
+							B = M.compute_box();
+							have_new_mesh = true;
+							post_redraw();
+						}					
 					}
-
-					// mesh is animated
-					B = M.compute_box();
-					have_new_mesh = true;
-					post_redraw();
 				}
 
 			}
@@ -1136,6 +1186,68 @@ void vr_mesh_view::applySmoothing() {
 	build_aabbtree_from_triangles(he, aabb_tree);
 }
 
+void vr_mesh_view::tessellation(const vec3& origin, const vec3& direction) {
+	//global to local
+	vec3 new_origin = global_to_local(origin);
+	vec3 point_on_ray = origin + direction;
+	vec3 new_point_on_ray = global_to_local(point_on_ray);
+	vec3 new_dir = new_point_on_ray - new_origin;
+
+	// create ray
+	ray_intersection::ray tes_ray = ray_intersection::ray(new_origin, new_dir);
+	float t = 0.0;
+
+	if (ray_intersection::rayTreeIntersect(tes_ray, aabb_tree, t)) {
+		vr_mesh_view::nr_tes_intersection++;
+		vec3 tes_inter_point = ray_intersection::getIntersectionPoint(tes_ray, t);
+		M.new_position(tes_inter_point);
+		std::cout << tes_inter_point << std::endl;
+		HE_Face* tes_face = ray_intersection::getIntersectedFace(tes_ray, he);
+		//vec3 p1, p2, p3;
+		//mesh_utils::getVerticesOfFace(he, tes_face, p1, p2, p3);
+
+		auto tes_point = he->GetVerticesForFace(tes_face); //three vertices in the tes_face
+		// add three faces to the original half edge mesh
+		for (int i = 0; i < 3; i++) {
+			unsigned int vectorAIndex = tes_point[i]->originalIndex;
+			unsigned int vectorBIndex = tes_point[(i + 1) % 3]->originalIndex;
+			unsigned int vectorCIndex = M.get_nr_positions() + nr_tes_intersection;
+
+			// adding the 3 vectors
+			auto vectorA = he->AddVector(vectorAIndex, tes_point[i]->position);
+			auto vectorB = he->AddVector(vectorBIndex, tes_point[(i + 1) % 3]->position);
+			auto vectorC = he->AddVector(vectorCIndex, tes_inter_point);
+
+			auto face = he->AddFace();
+
+			// generating 3 half edges per triangle
+			auto halfEdgeC = he->AddHalfEdge(vectorC, vectorA, face);
+			auto halfEdgeB = he->AddHalfEdge(vectorB, vectorC, face, halfEdgeC);
+			auto halfEdgeA = he->AddHalfEdge(vectorA, vectorB, face, halfEdgeB);
+
+			// closing the loop
+			halfEdgeC->next = halfEdgeA;
+		}
+		M.compute_vertex_normals();
+		B = M.compute_box();
+		have_new_mesh = true;
+		post_redraw();
+		build_aabbtree_from_triangles(he, aabb_tree);
+	}
+	else {
+		std::cout << "No intersection" << std::endl;
+	}
+}
+
+void vr_mesh_view::vertex_manipulate(HE_Vertex* vertex, vec3 pos_change) {
+
+	if (he->changeVertexPos(vertex, vertex->position + pos_change)) {
+		M.position(vertex->originalIndex) = M.position(vertex->originalIndex) + pos_change;
+		post_redraw();
+	}
+	else
+		std::cout << "Vertex position couldn't be manipulated." << std::endl;
+}
 
 #include <cgv/base/register.h>
 
