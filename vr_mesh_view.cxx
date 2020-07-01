@@ -20,7 +20,13 @@
 typedef cgv::media::mesh::simple_mesh<float> mesh_type;
 typedef mesh_type::idx_type idx_type;
 typedef mesh_type::vec3i vec3i;
-
+std::vector<vec3> path_list_1;//store controller translation path
+std::vector<vec3> path_list_2;
+std::vector<vec3> path_list_3;//store mesh animation path
+std::vector<vec3> color_list;
+int pathi = 0;
+bool start_animation = false;
+bool rightButton2IsPressed = false;
 void vr_mesh_view::init_cameras(vr::vr_kit* kit_ptr)
 {
 	vr::vr_camera* camera_ptr = kit_ptr->get_camera();
@@ -303,14 +309,51 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				yButtonIsPressed = true;
 				break;
 			case vr::VR_RIGHT_BUTTON1:
+			{
 				vec3 origin, direction;
 				rightButton1IsPressed = true;
 				vrke.get_state().controller[1].put_ray(&origin(0), &direction(0));
 				tessellation(origin, direction);
+			}
 				break;
 			case vr::VR_LEFT_BUTTON1:
 				leftButton1IsPressed = true;
 				break;
+			case vr::VR_LEFT_BUTTON2:
+				along_path_go();
+				break;
+			case vr::VR_LEFT_BUTTON3:
+				along_path_back();
+				break;
+			case vr::VR_RIGHT_BUTTON2:
+			{
+				rightButton2IsPressed = true;
+				vec3 origin, direction;
+				vrke.get_state().controller[1].put_ray(&origin(0), &direction(0));
+				vec3 new_origin = global_to_local(origin);
+				vec3 point_on_ray = origin + direction;
+				vec3 new_point_on_ray = global_to_local(point_on_ray);
+				vec3 new_dir = new_point_on_ray - new_origin;
+
+				// create ray
+				//check if it intersect,start to define the animation path
+				ray_intersection::ray tes_ray = ray_intersection::ray(new_origin, new_dir);
+				float t = 0.0;
+				//first time to start define path
+				if (ray_intersection::rayTreeIntersect(tes_ray, aabb_tree, t) && start_animation == false) {
+
+					vec3 tes_inter_point = ray_intersection::getIntersectionPoint(tes_ray, t);
+					path_list_3.push_back(tes_inter_point);
+					start_define_path(tes_inter_point, origin);
+					start_animation = true;
+				}
+				//continue to define path
+				else {
+					start_define_path(path_list_2[path_list_2.size() - 1], origin);
+
+				}
+			}
+			break;
 			}
 	
 		}
@@ -336,6 +379,17 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				}
 				isVertexPicked = false;			
 				break;
+			case vr::VR_RIGHT_BUTTON2:
+			{
+
+				vec3 position_right, direction;
+				vrke.get_state().controller[1].put_ray(&position_right(0), &direction(0));
+				end_define_path(position_right);
+				rightButton2IsPressed = false;
+
+
+			}
+			break;
 			}
 		}
 
@@ -686,7 +740,10 @@ void vr_mesh_view::draw(cgv::render::context& ctx)
 			mesh_scale = map(dist, 0.1f, 1.7f, 0.1f, 0.5f);
 		}
 	}
-
+	if (path_list_1.size() > 1) {
+		//drawpath(ctx, path_list_1);
+		drawpath(ctx, path_list_2);
+	}
 	if (vr_view_ptr) {
 		if ((!shared_texture && camera_tex.is_created()) || (shared_texture && camera_tex_id != -1)) {
 			if (vr_view_ptr->get_rendered_vr_kit() != 0 && vr_view_ptr->get_rendered_vr_kit() == vr_view_ptr->get_current_vr_kit()) {
@@ -1248,6 +1305,86 @@ void vr_mesh_view::vertex_manipulate(HE_Vertex* vertex, vec3 pos_change) {
 	else
 		std::cout << "Vertex position couldn't be manipulated." << std::endl;
 }
+
+void vr_mesh_view::start_define_path(const vec3& intersection_point, const vec3& origin) {
+	path_list_1.push_back(origin);
+	path_list_2.push_back(intersection_point);
+
+}
+void vr_mesh_view::end_define_path(const vec3& origin)
+{
+	vec3 a = path_list_1[path_list_1.size() - 1];
+	vec3 b = path_list_2[path_list_2.size() - 1];
+	vec3 c;
+	path_list_1.push_back(origin);
+	c = origin - a + b;
+	path_list_2.push_back(c);
+	path_list_3.push_back(c);
+	pathi = path_list_3.size() - 1;
+	do_the_animation();
+}
+void vr_mesh_view::do_the_animation() {
+
+	vec3 translation = path_list_2[path_list_2.size() - 1] - path_list_2[path_list_2.size() - 2];
+	add_translation(translation);
+	mat3 dummyRotation;
+	dummyRotation.identity();
+	M.transform(dummyRotation, translation);
+	B = M.compute_box();
+	have_new_mesh = true;
+	post_redraw();
+
+}
+void vr_mesh_view::drawpath(cgv::render::context& ctx, std::vector<vec3> path_list) {
+
+	auto& prog = ctx.ref_default_shader_program();
+	int ci = prog.get_color_index();
+	vec3 a = (1, 0, 0);
+	color_list.push_back(a);
+	cgv::render::attribute_array_binding::set_global_attribute_array(ctx, prog.get_position_index(), path_list);
+	cgv::render::attribute_array_binding::enable_global_array(ctx, prog.get_position_index());
+	cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ci, color_list);
+	cgv::render::attribute_array_binding::enable_global_array(ctx, ci);
+	glLineWidth(1);
+	prog.enable(ctx);
+	glDrawArrays(GL_LINES, 0, (GLsizei)path_list.size());
+	prog.disable(ctx);
+	cgv::render::attribute_array_binding::disable_global_array(ctx, prog.get_position_index());
+	cgv::render::attribute_array_binding::disable_global_array(ctx, ci);
+
+}
+
+void vr_mesh_view::along_path_go() {
+	int a = path_list_3.size();
+	if (pathi < a - 1) {
+
+		vec3 translation = path_list_3[pathi + 1] - path_list_3[pathi];
+		add_translation(translation);
+		mat3 dummyRotation;
+		dummyRotation.identity();
+		M.transform(dummyRotation, translation);
+		B = M.compute_box();
+		have_new_mesh = true;
+		post_redraw();
+		pathi = pathi + 1;
+	}
+
+}
+void vr_mesh_view::along_path_back() {
+	if (pathi != 0) {
+		vec3 translation = path_list_3[pathi - 1] - path_list_3[pathi];
+		add_translation(translation);
+		mat3 dummyRotation;
+		dummyRotation.identity();
+		M.transform(dummyRotation, translation);
+		B = M.compute_box();
+		have_new_mesh = true;
+		post_redraw();
+		pathi = pathi - 1;
+	}
+}
+
+
 
 #include <cgv/base/register.h>
 
