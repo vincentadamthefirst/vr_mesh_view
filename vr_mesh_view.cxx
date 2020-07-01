@@ -341,8 +341,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				}
 				//continue to define path
 				else {start_define_path(path_list_2[path_list_2.size() - 1],origin);
-				std::cout << "list3:" << path_list_3.size() << std::endl;
-				std::cout << "pathi" << pathi << std::endl;
+				
 				}
 			}		
 				break;
@@ -365,8 +364,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				vrke.get_state().controller[1].put_ray(&position_right(0), &direction(0));
 				end_define_path(position_right);
 				aniButton1IsPressed = false;
-				std::cout << "path_list_2:" << path_list_2.size() << std::endl;
-				std::cout << "path_list_1:" << path_list_1.size() << std::endl;
+				
 
 			}	
 				break;
@@ -1251,7 +1249,7 @@ void vr_mesh_view::drawpath(cgv::render::context& ctx,std::vector<vec3> path_lis
 void vr_mesh_view::along_path_go() {
 	int a = path_list_3.size();
 	if (pathi < a - 1) {
-		std::cout << "ppp:" << pathi<< std::endl;
+	
 		vec3 translation = path_list_3[pathi+1] - path_list_3[pathi];
 		add_translation(translation);
 		mat3 dummyRotation;
