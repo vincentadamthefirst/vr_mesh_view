@@ -352,6 +352,27 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					start_define_path(path_list_2[path_list_2.size() - 1], origin);
 
 				}
+				break;
+			}
+			case vr::VR_RIGHT_BUTTON3:
+			{
+				smoothingpoints.clear();
+				vec3 origin, direction;
+				rightButton3IsPressed = true;
+				vrke.get_state().controller[1].put_ray(&origin(0), &direction(0));
+				vec3 new_origin = global_to_local(origin);
+				vec3 point_on_ray = origin + direction;
+				vec3 new_point_on_ray = global_to_local(point_on_ray);
+				vec3 new_dir = new_point_on_ray - new_origin;
+				//ray_intersection::ray tes_ray = ray_intersection::ray(new_origin, new_dir);
+				ray_intersection::ray tes_ray = ray_intersection::ray(origin, direction);
+				float t = 0.0;
+
+				if (ray_intersection::rayTreeIntersect(tes_ray, aabb_tree, t)) {
+					std::vector<HE_Vertex*> vertices_of_face = he->GetVerticesForFace(ray_intersection::getIntersectedFace(tes_ray, he));
+					//vec3 tes_inter_point = ray_intersection::getIntersectionPoint(tes_ray, t);
+					smoothingpoints = vertices_of_face;
+				}
 			}
 			break;
 			}
@@ -387,7 +408,19 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				end_define_path(position_right);
 				rightButton2IsPressed = false;
 
-
+				break;
+			}
+			case vr::VR_RIGHT_BUTTON3:
+			{
+				if (smoothingpoints.size() == 0) {
+					std::cout << "smoothing whole mesh" << std::endl;
+					applySmoothing();
+				}					
+				else {
+					std::cout << "smoothing some points" << std::endl;
+					applySmoothingPoints();
+				}			
+				rightButton3IsPressed = false;
 			}
 			break;
 			}
@@ -1223,7 +1256,7 @@ vec3 vr_mesh_view::global_to_local(vec3 pos) {
 
 
 //updates Simple mesh from HE_Mesh
-void vr_mesh_view::updateSimpleMesh() {
+/*void vr_mesh_view::updateSimpleMesh() {
 	auto originalPositions = M.get_positions();
 
 	for (auto v : *he->GetVertices()) {
@@ -1234,12 +1267,77 @@ void vr_mesh_view::updateSimpleMesh() {
 	B = M.compute_box();
 	have_new_mesh = true;
 	post_redraw();
-}
+}*/
 
 void vr_mesh_view::applySmoothing() {
 	if (M.get_positions().empty()) return;
-	he = mesh_utils::smoothing_laplacian(he);
-	updateSimpleMesh();
+	//he = mesh_utils::smoothing_laplacian(he, transformation_matrix);
+
+	std::vector<vec3> newPositions;
+
+	for (HE_Vertex* v : *he->GetVertices()) {
+		int number = 0;
+		vec3 newpos = vec3(0, 0, 0);
+		for (HE_Vertex* neighbor : he->GetNeighborVertices(v)) {
+			number++;
+			newpos += neighbor->position;
+		}
+		newpos /= number;
+		newPositions.push_back(newpos);
+	}
+	int i = 0;
+	for (HE_Vertex* v : *he->GetVertices()) {
+		//std::cout << i << " " << v->position << ", " << newPositions[i] << std::endl;
+		vec4 n = vec4(newPositions[i], 1);
+		vec4 newpos = n * transformation_matrix;
+		v->position = vec3(newpos.x(), newpos.y(), newpos.z());
+		M.position(v->originalIndex) = v->position;
+		++i;
+
+	}
+	M.compute_vertex_normals();
+	B = M.compute_box();
+	have_new_mesh = true;
+	post_redraw();
+	transformation_matrix.identity();
+	
+	build_aabbtree_from_triangles(he, aabb_tree);
+}
+
+void vr_mesh_view::applySmoothingPoints() {
+	//he = mesh_utils::smoothing_laplacian_points(he,smoothingpoints);
+	std::vector<vec3> newPositions;
+	for (HE_Vertex* v : smoothingpoints) {
+		int number = 0;
+		vec3 newpos = vec3(0, 0, 0);
+		for (HE_Vertex* neighbor : he->GetNeighborVertices(v)) {
+			number++;
+			newpos += neighbor->position;
+		}
+		newpos /= number;
+		newPositions.push_back(newpos);
+	}
+	int i = 0;
+	for (HE_Vertex* v : smoothingpoints) {
+		//std::cout << i << " " << v->position << ", " << newPositions[i] << std::endl;
+		v->position = newPositions[i];
+		vec4 n = vec4(v->position, 1);
+		vec4 newpos = n * transformation_matrix;
+		M.position(v->originalIndex) = vec3(newpos.x(), newpos.y(), newpos.z());
+		++i;
+
+	}
+	/*for (auto v : smoothingpoints) {
+		//std::cout << M.position(v->originalIndex) << ", " << v->position << std::endl;;
+		vec4 n = vec4(v->position, 1);
+		vec4 newpos = n * transformation_matrix;
+		M.position(v->originalIndex) = vec3(newpos.x(), newpos.y(), newpos.z());
+	}*/
+	smoothingpoints.clear();
+	M.compute_vertex_normals();
+	B = M.compute_box();
+	have_new_mesh = true;
+	post_redraw();
 	build_aabbtree_from_triangles(he, aabb_tree);
 }
 

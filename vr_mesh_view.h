@@ -174,6 +174,9 @@ protected:
 	//vertex manipulation
 	bool leftButton1IsPressed = false;
 	bool isVertexPicked = false;
+
+	bool rightButton3IsPressed = false;
+
 	HE_Vertex* intersectedVertex;
 	// positions only get written when y and b key (oculus) are held
 	vec3 rightControllerPosition;
@@ -181,6 +184,8 @@ protected:
 
 	OcculusController leftController;
 	OcculusController rightController;
+
+	std::vector<HE_Vertex*> smoothingpoints;
 
 public:
 	void init_cameras(vr::vr_kit* kit_ptr);
@@ -242,6 +247,7 @@ public:
 
 	void updateSimpleMesh();
 	void applySmoothing();
+	void applySmoothingPoints();
 	void tessellation(const vec3& origin, const vec3& direction);
 	void vertex_manipulate(HE_Vertex* vertex, vec3 new_pos);
 	void start_define_path(const vec3& intersection_point, const vec3& origin);
