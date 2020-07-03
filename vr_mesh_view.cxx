@@ -308,24 +308,24 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 			case vr::VR_LEFT_MENU:
 				yButtonIsPressed = true;
 				break;
-			case vr::VR_RIGHT_BUTTON1:
+			case vr::VR_LEFT_STICK_UP:
 			{
 				vec3 origin, direction;
 				rightButton1IsPressed = true;
-				vrke.get_state().controller[1].put_ray(&origin(0), &direction(0));
+				vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
 				tessellation(origin, direction);
 			}
 				break;
-			case vr::VR_LEFT_BUTTON1:
+			case vr::VR_LEFT_STICK_LEFT:
 				leftButton1IsPressed = true;
 				break;
-			case vr::VR_LEFT_BUTTON2:
+			case vr::VR_RIGHT_STICK_DOWN:
 				along_path_go();
 				break;
-			case vr::VR_LEFT_BUTTON3:
+			case vr::VR_RIGHT_STICK_UP:
 				along_path_back();
 				break;
-			case vr::VR_RIGHT_BUTTON2:
+			case vr::VR_RIGHT_STICK_LEFT:
 			{
 				rightButton2IsPressed = true;
 				vec3 origin, direction;
@@ -354,7 +354,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				}
 				break;
 			}
-			case vr::VR_RIGHT_BUTTON3:
+			case vr::VR_LEFT_STICK_DOWN:
 			{
 				smoothingpoints.clear();
 				vec3 origin, direction;
@@ -386,10 +386,10 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 			case vr::VR_LEFT_MENU:
 				yButtonIsPressed = false;
 				break;
-			case vr::VR_RIGHT_BUTTON1:
+			case vr::VR_LEFT_STICK_UP:
 				rightButton1IsPressed = false;
 				break;
-			case vr::VR_LEFT_BUTTON1:
+			case vr::VR_LEFT_STICK_LEFT:
 				leftButton1IsPressed = false;
 				if (isVertexPicked) {
 					M.compute_vertex_normals();
@@ -400,7 +400,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				}
 				isVertexPicked = false;			
 				break;
-			case vr::VR_RIGHT_BUTTON2:
+			case vr::VR_RIGHT_STICK_LEFT:
 			{
 
 				vec3 position_right, direction;
@@ -410,7 +410,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 
 				break;
 			}
-			case vr::VR_RIGHT_BUTTON3:
+			case vr::VR_LEFT_STICK_DOWN:
 			{
 				if (smoothingpoints.size() == 0) {
 					std::cout << "smoothing whole mesh" << std::endl;
@@ -482,7 +482,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 
 					if (ci == 1) { // right controller
 						// get translation between previous and current intersection point
-						vec3 translation = new_intersection - intersection_points[i];
+						/*vec3 translation = new_intersection - intersection_points[i];
 
 						intersection_points[i] = new_intersection;
 
@@ -496,7 +496,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 						// mesh is animated
 						B = M.compute_box();
 						have_new_mesh = true;
-						post_redraw();
+						post_redraw();*/
 					}
 
 					if (ci == 0) { // left controller
@@ -519,7 +519,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 						}
 						//Rotation
 						else {
-							mat3 orientation = vrpe.get_orientation();
+							/*mat3 orientation = vrpe.get_orientation();
 							mat3 last_orientation = vrpe.get_last_orientation();
 							mat3 rotation = inv(last_orientation) * orientation;
 
@@ -533,7 +533,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 							// mesh is animated
 							B = M.compute_box();
 							have_new_mesh = true;
-							post_redraw();
+							post_redraw();*/
 						}					
 					}
 				}
