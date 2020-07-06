@@ -260,6 +260,18 @@ vr_mesh_view::vr_mesh_view()
 	show_environment_boxes = true;
 	show_colored_boxes = true;
 	build_scene(5, 7, 3, 0.2f, 1.6f, 0.8f, 0.7f, 0.03f);
+
+
+	label_outofdate = true;
+	label_text = "Surface:\nVolume:";
+	label_font_idx = 0;
+	label_upright = true;
+	label_face_type = cgv::media::font::FFA_BOLD;
+	label_resolution = 256;
+	label_size = 20.0f;
+	label_color = rgb(1, 1, 1);
+
+
 }
 	
 void vr_mesh_view::stream_help(std::ostream& os) {
@@ -631,7 +643,49 @@ void vr_mesh_view::clear(cgv::render::context& ctx)
 
 void vr_mesh_view::init_frame(cgv::render::context& ctx)
 {
+	if (label_fbo.get_width() != label_resolution) {
+		label_tex.destruct(ctx);
+		label_fbo.destruct(ctx);
+	}
+	if (!label_fbo.is_created()) {
+		label_tex.create(ctx, cgv::render::TT_2D, label_resolution, label_resolution);
+		label_fbo.create(ctx, label_resolution, label_resolution);
+		label_tex.set_min_filter(cgv::render::TF_LINEAR_MIPMAP_LINEAR);
+		label_tex.set_mag_filter(cgv::render::TF_LINEAR);
+		label_fbo.attach(ctx, label_tex);
+		label_outofdate = true;
+	}
+	if (label_outofdate && label_fbo.is_complete(ctx)) {
+		glPushAttrib(GL_COLOR_BUFFER_BIT);
+		label_fbo.enable(ctx);
+		label_fbo.push_viewport(ctx);
+		ctx.push_pixel_coords();
+		glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
 
+		glColor4f(label_color[0], label_color[1], label_color[2], 1);
+		ctx.set_cursor(20, (int)ceil(label_size) + 20);
+		ctx.enable_font_face(label_font_face, label_size);
+		ctx.output_stream() << label_text << "\n";
+		ctx.output_stream().flush(); // make sure to flush the stream before change of font size or font face
+
+		ctx.enable_font_face(label_font_face, 0.7f * label_size);
+		/*for (size_t i = 0; i < intersection_points.size(); ++i) {
+			ctx.output_stream()
+				<< "box " << intersection_box_indices[i]
+				<< " at (" << intersection_points[i]
+				<< ") with controller " << intersection_controller_indices[i] << "\n";
+		}*/
+		ctx.output_stream().flush();
+
+		ctx.pop_pixel_coords();
+		label_fbo.pop_viewport(ctx);
+		label_fbo.disable(ctx);
+		glPopAttrib();
+		label_outofdate = false;
+
+		label_tex.generate_mipmaps(ctx);
+	}
 	if (have_new_mesh) {
 		if (!M.get_positions().empty()) {
 			if (!M.has_normals())
@@ -762,6 +816,35 @@ void vr_mesh_view::draw_surface(cgv::render::context& ctx, bool opaque_part)
 
 void vr_mesh_view::draw(cgv::render::context& ctx)
 {
+	// draw label
+	if (label_tex.is_created()) {
+		cgv::render::shader_program& prog = ctx.ref_default_shader_program(true);
+		int pi = prog.get_position_index();
+		int ti = prog.get_texcoord_index();
+		vec3 p(0, 1.5f, 0);
+		vec3 y = label_upright ? vec3(0, 1.0f, 0) : normalize(vr_view_ptr->get_view_up_dir_of_kit());
+		vec3 x = normalize(cross(vec3(vr_view_ptr->get_view_dir_of_kit()), y));
+		float w = 0.5f, h = 0.5f;
+		std::vector<vec3> P;
+		std::vector<vec2> T;
+		P.push_back(p - 0.5f * w * x - 0.5f * h * y); T.push_back(vec2(0.0f, 0.0f));
+		P.push_back(p + 0.5f * w * x - 0.5f * h * y); T.push_back(vec2(1.0f, 0.0f));
+		P.push_back(p - 0.5f * w * x + 0.5f * h * y); T.push_back(vec2(0.0f, 1.0f));
+		P.push_back(p + 0.5f * w * x + 0.5f * h * y); T.push_back(vec2(1.0f, 1.0f));
+		cgv::render::attribute_array_binding::set_global_attribute_array(ctx, pi, P);
+		cgv::render::attribute_array_binding::enable_global_array(ctx, pi);
+		cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ti, T);
+		cgv::render::attribute_array_binding::enable_global_array(ctx, ti);
+		prog.enable(ctx);
+		label_tex.enable(ctx);
+		ctx.set_color(rgb(1, 1, 1));
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, (GLsizei)P.size());
+		label_tex.disable(ctx);
+		prog.disable(ctx);
+		cgv::render::attribute_array_binding::disable_global_array(ctx, pi);
+		cgv::render::attribute_array_binding::disable_global_array(ctx, ti);
+	}
+
 	if (leftControllerPosition != nullptr && rightControllerPosition != nullptr) {
 		if (bButtonIsPressed && yButtonIsPressed) {
 			auto direction = leftControllerPosition - rightControllerPosition;
@@ -1124,6 +1207,11 @@ bool vr_mesh_view::read_mesh(const std::string& file_name)
 		he = generate_from_simple_mesh(M);
 		build_aabbtree_from_triangles(he, aabb_tree);
 		transformation_matrix.identity();
+		float volume = mesh_utils::volume(he);
+		float surface = mesh_utils::surface(he);
+		label_text = "Volume: " + std::to_string(volume) + "\nSurface: " + std::to_string(surface);
+		label_outofdate = true;
+
 	}
 	sphere_style.radius = float(0.05 * sqrt(B.get_extent().sqr_length() / Vector_count));
 	on_set(&sphere_style.radius);

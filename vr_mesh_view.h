@@ -187,6 +187,29 @@ protected:
 
 	std::vector<HE_Vertex*> smoothingpoints;
 
+	std::string label_text;
+	int label_font_idx;
+	bool label_upright;
+	float label_size;
+	rgb label_color;
+
+	bool label_outofdate; // whether label texture is out of date
+	unsigned label_resolution; // resolution of label texture
+	cgv::render::texture label_tex; // texture used for offline rendering of label
+	cgv::render::frame_buffer label_fbo; // fbo used for offline rendering of label
+
+	// general font information
+	std::vector<const char*> font_names;
+	std::string font_enum_decl;
+
+	// current font face used
+	cgv::media::font::font_face_ptr label_font_face;
+	cgv::media::font::FontFaceAttributes label_face_type;
+
+
+
+
+
 public:
 	void init_cameras(vr::vr_kit* kit_ptr);
 
