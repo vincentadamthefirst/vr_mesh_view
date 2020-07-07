@@ -321,6 +321,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				yButtonIsPressed = true;
 				break;
 			case vr::VR_LEFT_STICK_UP:
+			//case vr::VR_RIGHT_BUTTON1:
 			{
 				vec3 origin, direction;
 				rightButton1IsPressed = true;
@@ -1459,8 +1460,6 @@ void vr_mesh_view::tessellation(const vec3& origin, const vec3& direction) {
 	if (ray_intersection::rayTreeIntersect(tes_ray, aabb_tree, t)) {
 		vr_mesh_view::nr_tes_intersection++;
 		vec3 tes_inter_point = ray_intersection::getIntersectionPoint(tes_ray, t);
-		M.new_position(tes_inter_point);
-		std::cout << tes_inter_point << std::endl;
 		HE_Face* tes_face = ray_intersection::getIntersectedFace(tes_ray, he);
 		//vec3 p1, p2, p3;
 		//mesh_utils::getVerticesOfFace(he, tes_face, p1, p2, p3);
@@ -1487,6 +1486,48 @@ void vr_mesh_view::tessellation(const vec3& origin, const vec3& direction) {
 			// closing the loop
 			halfEdgeC->next = halfEdgeA;
 		}
+		//create a new normal 
+		idx_type normal_idx = M.new_normal(vec3(0.0f, -1.0f, 0.0f));
+		//create a global point vector
+		vec4 trans_point = vec4(0);
+		//transform the intersected point from local to global system
+		trans_point = transformation_matrix * vec4(tes_inter_point, 1.0);
+		//create a new position in the simple mesh M
+		idx_type tes_pos_idx = M.new_position(vec3(trans_point[0], trans_point[1], trans_point[2]));
+		// add new faces to simple mesh
+		for (int i = 0; i < 3; i++) {
+			//create a new face
+			M.start_face();
+			// tell the mesh to save a new corner (vertex) with the position and normal given as indices
+			M.new_corner(tes_pos_idx, normal_idx);
+
+			idx_type pos_idx;
+			pos_idx = tes_point[i]->originalIndex;
+			//create the second corner for each face
+			M.new_corner(pos_idx, normal_idx);
+
+			// create the last corner
+			pos_idx = tes_point[(i + 1) % 3]->originalIndex;
+			M.new_corner(pos_idx, normal_idx);
+
+		}
+		//output some useful information
+		/*
+		std::cout << tes_inter_point << std::endl;
+
+		std::cout << "normal :" << M.normal(tes_point[0]->originalIndex) << std::endl;
+		std::cout << "normal :" << M.normal(tes_point[1]->originalIndex) << std::endl;
+		std::cout << "normal :" << M.normal(tes_point[2]->originalIndex) << std::endl;
+		std::cout << "nr_face " << M.get_nr_faces() << std::endl;
+		std::cout << "nr_normal " << M.get_nr_normals() << std::endl;
+		std::cout << "nr_position " << M.get_nr_positions() << std::endl;
+		std::cout << "begin_corner 0 " << M.begin_corner(0) << std::endl;
+		std::cout << "end_corner 0 " << M.end_corner(0) << std::endl;
+		std::cout << "begin_corner 11 " << M.begin_corner(11) << std::endl;
+		std::cout << "end_corner 11" << M.end_corner(11) << std::endl;
+		*/
+		
+		//compute the normals again
 		M.compute_vertex_normals();
 		B = M.compute_box();
 		have_new_mesh = true;
