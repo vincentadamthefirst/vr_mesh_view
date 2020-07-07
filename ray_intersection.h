@@ -119,7 +119,34 @@ namespace ray_intersection {
 			return temp_face;
 		}
 	}
+	
+	HE_Face* getIntersectedFace_with_t(ray& r, HE_Mesh* mesh, float& main_t)
+	{
+		vec3 v0, v1, v2;
+		bool intersect = false;
+		float temp_t = 1000000;
+		float t = 0;
 
+		HE_Face* temp_face = new HE_Face();
+
+		for (auto face : *mesh->GetFaces()) {
+			if (rayFaceIntersect(r, mesh, face, t))
+			{
+				intersect = true;
+				if (t < temp_t) {
+					temp_t = t;
+					temp_face = face;
+				}
+			}
+		}
+		if (intersect) {
+			main_t = temp_t;
+			return temp_face;
+		}
+		else {
+			return temp_face;
+		}
+	}
 	
 	bool rayBoxIntersect(const ray& r, const box3& b)
 	{
