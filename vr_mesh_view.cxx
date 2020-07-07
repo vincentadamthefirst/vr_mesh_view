@@ -402,6 +402,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				rightButton1IsPressed = false;
 				break;
 			case vr::VR_LEFT_STICK_LEFT:
+			{
 				leftButton1IsPressed = false;
 				if (isVertexPicked) {
 					M.compute_vertex_normals();
@@ -412,6 +413,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				}
 				isVertexPicked = false;			
 				break;
+			}
 			case vr::VR_RIGHT_STICK_LEFT:
 			{
 
@@ -491,7 +493,14 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 						continue;
 
 					vec3 new_intersection = origin + intersection_offsets[i] * direction;
-
+					
+					//global to local
+					vec3 local_origin = global_to_local(origin);
+					vec3 point_on_ray = origin + direction;
+					vec3 new_point_on_ray = global_to_local(point_on_ray);
+					vec3 local_direction = new_point_on_ray - local_origin;
+					//global to local
+					
 					if (ci == 1) { // right controller
 						// get translation between previous and current intersection point
 						/*vec3 translation = new_intersection - intersection_points[i];
@@ -520,8 +529,15 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 								vr_mesh_view::vertex_manipulate(intersectedVertex, pos - last_pos);
 							}
 							else {
-								std::vector<HE_Vertex*> vertices_of_face = he->GetVerticesForFace(ray_intersection::getIntersectedFace(ray_intersection::ray(origin, direction), he));
-								if (ray_intersection::vertexIntersection(new_intersection, vertices_of_face, intersectedVertex)) {
+								//std::vector<HE_Vertex*> vertices_of_face = he->GetVerticesForFace(ray_intersection::getIntersectedFace(ray_intersection::ray(origin, direction), he));
+								//changed from global to local
+								float t = 0.0f;
+								std::vector<HE_Vertex*> vertices_of_face = he->GetVerticesForFace(ray_intersection::getIntersectedFace_with_t(vertex_ray, he, t));
+								
+								//if (ray_intersection::vertexIntersection(new_intersection, vertices_of_face, intersectedVertex)) {
+								//changed from global to local
+								vec3 local_intersection_point = ray_intersection::getIntersectionPoint(vertex_ray, t);
+								if (ray_intersection::vertexIntersection(local_intersection_point, vertices_of_face, intersectedVertex)) {
 									isVertexPicked = true;
 									vec3 last_pos = vrpe.get_last_position();
 									vec3 pos = vrpe.get_position();
