@@ -236,13 +236,10 @@ public:
 
 	void updateSimpleMesh();
 	void applySmoothing();
-	//void start_define_path(const vec3& intersection_point, const vec3& origin);
-	//void end_define_path(const vec3& origin);
-	//void define_path(const vec3& add_position);
+	
 	void drawpath(cgv::render::context& ctx,std::vector<vec3> path_list);
-	void do_the_animation();
-	//void along_path_go();
-	//void along_path_back();
+	
+	
 
 
 
