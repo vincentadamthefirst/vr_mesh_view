@@ -20,13 +20,21 @@
 typedef cgv::media::mesh::simple_mesh<float> mesh_type;
 typedef mesh_type::idx_type idx_type;
 typedef mesh_type::vec3i vec3i;
-std::vector<vec3> path_list_1;//store controller translation path
-std::vector<vec3> path_list_2;
-std::vector<vec3> path_list_3;//store mesh animation path
+//std::vector<vec3> path_list_1;//store controller translation path
+//std::vector<vec3> path_list_2;
+//std::vector<vec3> path_list_3;//store mesh animation path
 std::vector<vec3> color_list;
-int pathi =0;
-bool start_animation=false;
-bool aniButton1IsPressed = false;
+int pathi=0 ;
+//bool start_animation=false;
+bool rightButton2IsPressed = false;
+std::vector<vec3> defined_path2;
+std::vector<vec3> defined_path;
+
+bool animation_start = false;
+vec3 mesh_centroid;
+
+
+
 void vr_mesh_view::init_cameras(vr::vr_kit* kit_ptr)
 {
 	vr::vr_camera* camera_ptr = kit_ptr->get_camera();
@@ -311,38 +319,24 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 			case vr::VR_LEFT_MENU:
 				yButtonIsPressed = true;
 				break;
-			case vr::VR_LEFT_BUTTON2:
+			/*case vr::VR_LEFT_BUTTON2:
 				along_path_go();
 				break;
-			case vr::VR_LEFT_BUTTON3:
-				along_path_back();
-				break;
-			case vr::VR_RIGHT_BUTTON1:
+			*/
+			case vr::VR_RIGHT_BUTTON2:
 			{
-				aniButton1IsPressed = true;
-				vec3 origin, direction;				
-				vrke.get_state().controller[1].put_ray(&origin(0), &direction(0));									
-				vec3 new_origin = global_to_local(origin);
-				vec3 point_on_ray = origin + direction;
-				vec3 new_point_on_ray = global_to_local(point_on_ray);
-				vec3 new_dir = new_point_on_ray - new_origin;
+				rightButton2IsPressed = true;
+				vec3 go_origin = defined_path[0] - defined_path[pathi];
+				add_translation(go_origin);
+				mat3 dummyRotation;
+				dummyRotation.identity();
+				M.transform(dummyRotation, go_origin);
 
-				// create ray
-				//check if it intersect,start to define the animation path
-				ray_intersection::ray tes_ray = ray_intersection::ray(new_origin, new_dir);
-				float t = 0.0;
-				//first time to start define path
-				if (ray_intersection::rayTreeIntersect(tes_ray, aabb_tree, t)&& start_animation == false) {
-									
-					vec3 tes_inter_point = ray_intersection::getIntersectionPoint(tes_ray, t);					
-					path_list_3.push_back(tes_inter_point);
-					start_define_path(tes_inter_point,origin);				
-					start_animation = true;
-				}
-				//continue to define path
-				else {start_define_path(path_list_2[path_list_2.size() - 1],origin);
-				
-				}
+				B = M.compute_box();
+				have_new_mesh = true;
+				post_redraw();
+				pathi = 0;
+			
 			}		
 				break;
 			
@@ -357,15 +351,10 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				yButtonIsPressed = false;
 				break;
 			//use right controller to define the translation path
-			case vr::VR_RIGHT_BUTTON1:
+			case vr::VR_RIGHT_BUTTON2:
 			{
-				
-				vec3 position_right, direction;
-				vrke.get_state().controller[1].put_ray(&position_right(0), &direction(0));
-				end_define_path(position_right);
-				aniButton1IsPressed = false;
-				
-
+				rightButton2IsPressed = false;
+								
 			}	
 				break;
 			
@@ -426,11 +415,28 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 						continue;
 
 					if (ci == 1) { // right controller
+
+						if (rightButton2IsPressed == false) {
+						if (animation_start == false) {
+							animation_start = true;
+							vec3 mesh_centroid=aabb_tree.Root()->get_box().get_center();
+							defined_path.push_back(mesh_centroid);
+							defined_path2.push_back(mesh_centroid);
+						}
+						else { defined_path2.push_back(defined_path2[defined_path2.size() - 1]); }
+
+
+
 						// get translation between previous and current intersection point
 						vec3 new_intersection = origin + intersection_offsets[i] * direction;
 						vec3 translation = new_intersection - intersection_points[i];
-
 						intersection_points[i] = new_intersection;
+
+
+						vec3 new_position = defined_path[defined_path.size()-1] + translation;
+						defined_path.push_back(new_position);
+						defined_path2.push_back(new_position);
+						pathi++;
 
 						add_translation(translation);
 
@@ -438,19 +444,25 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 						dummyRotation.identity();
 
 						M.transform(dummyRotation, translation);
+
+					}
+
+
 					}
 
 					if (ci == 0) { // left controller
-						mat3 orientation = vrpe.get_orientation();
-						mat3 last_orientation = vrpe.get_last_orientation();
-						mat3 rotation = inv(last_orientation) * orientation;
 
-						add_rotation(inv(rotation));
-
-						vec3 dummyTranslation;
-						dummyTranslation.zeros();
-
-						M.transform(inv(rotation), dummyTranslation);
+						if (rightButton2IsPressed == true && animation_start == true) {
+							if (pathi != defined_path.size() - 1){
+							vec3 translation_1 = defined_path[pathi + 1] - defined_path[pathi];
+							add_translation(translation_1);
+							mat3 dummyRotation;
+							dummyRotation.identity();
+							M.transform(dummyRotation, translation_1);
+							pathi++;
+						}
+						}
+						
 					}
 
 					// mesh is animated
@@ -697,9 +709,9 @@ void vr_mesh_view::draw(cgv::render::context& ctx)
 	}
 
 
-	if (path_list_1.size()>1) {
+	if (defined_path2.size()>1) {
 		//drawpath(ctx, path_list_1);
-		drawpath(ctx, path_list_2);
+		drawpath(ctx, defined_path2);
 	}
 
 
@@ -1198,35 +1210,7 @@ void vr_mesh_view::applySmoothing() {
 	build_aabbtree_from_triangles(he, aabb_tree);
 }
 
-void vr_mesh_view::start_define_path(const vec3& intersection_point, const vec3& origin) {
-	path_list_1.push_back(origin);
-	path_list_2.push_back(intersection_point);
-	
-}
-void vr_mesh_view::end_define_path(const vec3& origin)
-{
-	vec3 a = path_list_1[path_list_1.size() - 1];
-	vec3 b = path_list_2[path_list_2.size() - 1];
-	vec3 c;
-	path_list_1.push_back(origin);		
-	c = origin - a + b;
-	path_list_2.push_back(c);
-	path_list_3.push_back(c);
-	pathi = path_list_3.size()-1;
-	do_the_animation();
-}
-void vr_mesh_view::do_the_animation() {
-	
-	vec3 translation = path_list_2[path_list_2.size() - 1] - path_list_2[path_list_2.size() - 2];
-	add_translation(translation);
-	mat3 dummyRotation;
-	dummyRotation.identity();
-	M.transform(dummyRotation, translation);	
-	B = M.compute_box();
-	have_new_mesh = true;
-	post_redraw();
 
-}
 void vr_mesh_view::drawpath(cgv::render::context& ctx,std::vector<vec3> path_list) {
 
 	auto& prog = ctx.ref_default_shader_program();
@@ -1237,7 +1221,7 @@ void vr_mesh_view::drawpath(cgv::render::context& ctx,std::vector<vec3> path_lis
 	cgv::render::attribute_array_binding::enable_global_array(ctx, prog.get_position_index());
 	cgv::render::attribute_array_binding::set_global_attribute_array(ctx, ci, color_list);
 	cgv::render::attribute_array_binding::enable_global_array(ctx, ci);
-	glLineWidth(1);
+	glLineWidth(3);
 	prog.enable(ctx);
 	glDrawArrays(GL_LINES, 0, (GLsizei)path_list.size());
 	prog.disable(ctx);
@@ -1246,35 +1230,6 @@ void vr_mesh_view::drawpath(cgv::render::context& ctx,std::vector<vec3> path_lis
 
 }
 
-void vr_mesh_view::along_path_go() {
-	int a = path_list_3.size();
-	if (pathi < a - 1) {
-	
-		vec3 translation = path_list_3[pathi+1] - path_list_3[pathi];
-		add_translation(translation);
-		mat3 dummyRotation;
-		dummyRotation.identity();
-		M.transform(dummyRotation, translation);
-		B = M.compute_box();
-		have_new_mesh = true;
-		post_redraw();
-		pathi = pathi + 1;
-	}
-	
-}
-void vr_mesh_view::along_path_back() {
-	if (pathi != 0) {
-		vec3 translation = path_list_3[pathi - 1] - path_list_3[pathi];
-		add_translation(translation);
-		mat3 dummyRotation;
-		dummyRotation.identity();
-		M.transform(dummyRotation, translation);
-		B = M.compute_box();
-		have_new_mesh = true;
-		post_redraw();
-		pathi = pathi - 1;
-	}
-}
 #include <cgv/base/register.h>
 
 cgv::base::object_registration<vr_mesh_view> vr_test_reg("vr_mesh_view");
