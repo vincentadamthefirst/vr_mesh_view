@@ -1194,15 +1194,21 @@ bool vr_mesh_view::read_mesh(const std::string& file_name)
 		M = tmp;
 		B = M.compute_box();
 		Vector_count = M.get_nr_positions();
-		//create HE_MESH and build bounding box
-		he = generate_from_simple_mesh(M);
-		build_aabbtree_from_triangles(he, aabb_tree);
+
+		// initialize transformation matrices
 		transformation_matrix.identity();
 		mesh_rotation_matrix.identity();
 		mesh_translation_vector.zeros();
+
 		// scale the mesh
-		mesh_rotation_matrix *= mesh_scale;
-		M.transform(mesh_rotation_matrix, mesh_translation_vector);
+		mat3 scale_matrix;
+		scale_matrix.identity();
+		scale_matrix *= mesh_scale;
+		M.transform(scale_matrix, mesh_translation_vector);
+
+		//create HE_MESH and build bounding box
+		he = generate_from_simple_mesh(M);
+		build_aabbtree_from_triangles(he, aabb_tree);
 
 		float volume = mesh_utils::volume(he);
 		float surface = mesh_utils::surface(he);
