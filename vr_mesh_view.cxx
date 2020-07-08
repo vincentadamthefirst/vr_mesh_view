@@ -98,10 +98,9 @@ void vr_mesh_view::compute_intersections(const vec3& origin, const vec3& directi
 		vec3 intersection_point = ray_intersection::getIntersectionPoint(r, t);
 
 		//transform back to global
-		vec4 pos_vec4, new_pos;
-		pos_vec4 = vec4(intersection_point, 1.0);
-		new_pos = transformation_matrix * pos_vec4;
-		intersection_point = vec3(new_pos[0], new_pos[1], new_pos[2]);
+		vec3 new_pos;
+		new_pos = local_to_global(intersection_point);
+		intersection_point = new_pos;
 
 		// store intersection information
 		intersection_points.push_back(intersection_point);
@@ -486,7 +485,6 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 			vrpe.get_state().controller[ci].put_ray(&origin(0), &direction(0));
 
 			if (state[ci] == IS_GRAB) {
-				// TODO grab mode
 				// get previous and current intersection point
 
 				for (size_t i = 0; i < intersection_points.size(); ++i) {
@@ -507,21 +505,21 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					
 					if (ci == 1) { // right controller
 						// get translation between previous and current intersection point
-						/*vec3 translation = new_intersection - intersection_points[i];
+						vec3 translation = new_intersection - intersection_points[i];
 
 						intersection_points[i] = new_intersection;
 
-						add_translation(translation);
-
 						mat3 dummyRotation;
 						dummyRotation.identity();
+
+						add_translation(dummyRotation, translation);
 
 						M.transform(dummyRotation, translation);
 
 						// mesh is animated
 						B = M.compute_box();
 						have_new_mesh = true;
-						post_redraw();*/
+						post_redraw();
 					}
 
 					if (ci == 0) { // left controller
@@ -551,21 +549,23 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 						}
 						//Rotation
 						else {
-							/*mat3 orientation = vrpe.get_orientation();
-							mat3 last_orientation = vrpe.get_last_orientation();
-							mat3 rotation = inv(last_orientation) * orientation;
+							vec3 last_pos = vrpe.get_last_position();
+							vec3 pos = vrpe.get_position();
 
-							add_rotation(inv(rotation));
+							mat3 rotation = vrpe.get_rotation_matrix();
 
 							vec3 dummyTranslation;
 							dummyTranslation.zeros();
 
-							M.transform(inv(rotation), dummyTranslation);
+							add_rotation(rotation);
+							add_translation(rotation, rotation* (dummyTranslation - last_pos) + pos);
+
+							M.transform(rotation, rotation* (dummyTranslation - last_pos) + pos);
 
 							// mesh is animated
 							B = M.compute_box();
 							have_new_mesh = true;
-							post_redraw();*/
+							post_redraw();
 						}					
 					}
 				}
@@ -1227,6 +1227,9 @@ bool vr_mesh_view::read_mesh(const std::string& file_name)
 		he = generate_from_simple_mesh(M);
 		build_aabbtree_from_triangles(he, aabb_tree);
 		transformation_matrix.identity();
+		mesh_rotation_matrix.identity();
+		mesh_translation_vector.zeros();
+		mesh_rotation_quat = quat(mesh_rotation_matrix);
 		float volume = mesh_utils::volume(he);
 		float surface = mesh_utils::surface(he);
 		label_text = "Volume: " + std::to_string(volume) + "\nSurface: " + std::to_string(surface);
@@ -1323,6 +1326,15 @@ void vr_mesh_view::add_translation(vec3 v) {
 	transformation_matrix = transformation_matrix * mat_translation;
 }
 
+// add translation vector to matrix
+void vr_mesh_view::add_translation(mat3 r, vec3 v) {
+	mat4 mat_translation;
+	mat_translation.identity();
+	mat_translation.set_col(3, vec4(v, 1));
+	transformation_matrix = transformation_matrix * mat_translation;
+	mesh_translation_vector = r * mesh_translation_vector + v;
+}
+
 // add rotation to matrix via angle and axis
 void vr_mesh_view::add_rotation(float angle, vec3 axis) {
 	mat4 rotationmatrix = rotate4(angle, axis);
@@ -1345,23 +1357,21 @@ void vr_mesh_view::add_rotation(mat3 r3) {
 	}
 
 	transformation_matrix = transformation_matrix * r4;
+	mesh_rotation_matrix = r3 * mesh_rotation_matrix;
+	mesh_rotation_quat = mesh_rotation_quat * quat(r3);
+}
+
+// add rotation to matrix via 3x3 rotation matrix
+vec3 vr_mesh_view::global_to_local(vec3 pos) {
+	pos = transpose(mesh_rotation_matrix) * (pos - mesh_translation_vector);
+	return pos;
 }
 
 // returns pos in the local coordinate system
-vec3 vr_mesh_view::global_to_local(vec3 pos) {
-	mat4 inverse_m = inv(transformation_matrix);
-
-	
-	//std::cout << "transformation_matrix " << transformation_matrix << std::endl;
-	//std::cout << "inv " << inverse_m << std::endl;
-
-
-	vec4 pos_vec4, new_pos;
-	pos_vec4 = vec4(pos, 1.0);
-	new_pos = inverse_m * pos_vec4;
-	return vec3(new_pos[0], new_pos[1], new_pos[2]);
+vec3 vr_mesh_view::local_to_global(vec3 pos) {
+	pos = (mesh_rotation_matrix * pos) + mesh_translation_vector;
+	return pos;
 }
-
 
 //updates Simple mesh from HE_Mesh
 /*void vr_mesh_view::updateSimpleMesh() {

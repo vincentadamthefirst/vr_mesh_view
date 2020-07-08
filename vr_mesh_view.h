@@ -157,12 +157,14 @@ protected:
 
 	bool show_smoothing;
 
-
 	// gui object
 	vec3 translate_vector;
 
 	// transformation
 	mat4 transformation_matrix;
+	mat3 mesh_rotation_matrix;
+	vec3 mesh_translation_vector;
+	quat mesh_rotation_quat;
 
 	// vr control variables
 	// if the controller buttons are pressed (based on oculus)
@@ -260,10 +262,12 @@ public:
 	void draw_surface(cgv::render::context& ctx, bool opaque_part);
 
 	void add_translation(vec3 v);
+	void add_translation(mat3 r, vec3 v);
 	void add_rotation(float angle, vec3 axis);
 	void add_rotation(vec3 angles);
 	void add_rotation(mat3 rotation);
 	vec3 global_to_local(vec3 pos);
+	vec3 local_to_global(vec3 pos);
 
 	void scaleMesh(mesh_type& M, float scale);
 
