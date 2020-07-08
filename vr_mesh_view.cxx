@@ -502,6 +502,9 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					vec3 local_direction = new_point_on_ray - local_origin;
 					//global to local
 					
+					// create ray
+					ray_intersection::ray vertex_ray = ray_intersection::ray(local_origin, local_direction);
+					
 					if (ci == 1) { // right controller
 						// get translation between previous and current intersection point
 						/*vec3 translation = new_intersection - intersection_points[i];
