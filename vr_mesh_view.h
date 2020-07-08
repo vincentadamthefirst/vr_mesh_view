@@ -164,7 +164,6 @@ protected:
 	mat4 transformation_matrix;
 	mat3 mesh_rotation_matrix;
 	vec3 mesh_translation_vector;
-	quat mesh_rotation_quat;
 
 	// vr control variables
 	// if the controller buttons are pressed (based on oculus)

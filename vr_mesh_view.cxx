@@ -213,7 +213,7 @@ vr_mesh_view::vr_mesh_view()
 	last_kit_handle = 0;
 	connect(cgv::gui::ref_vr_server().on_device_change, this, &vr_mesh_view::on_device_change);
 
-	mesh_scale = 0.1f;
+	mesh_scale = 1;
 	mesh_location = dvec3(0, 0, 0);
 	mesh_orientation = dquat(1, 0, 0, 0);
 
@@ -296,8 +296,6 @@ void vr_mesh_view::on_set(void* member_ptr)
 float map(float input, float input_start, float input_end, float output_start, float output_end) {
 	return output_start + ((output_end - output_start) / (input_end - input_start)) * (input - input_start);
 }
-
-float last_scaling = 1;
 	
 bool vr_mesh_view::handle(cgv::gui::event& e)
 {
@@ -864,18 +862,6 @@ void vr_mesh_view::draw(cgv::render::context& ctx)
 		cgv::render::attribute_array_binding::disable_global_array(ctx, pi);
 		cgv::render::attribute_array_binding::disable_global_array(ctx, ti);
 	}
-
-	if (leftControllerPosition != nullptr && rightControllerPosition != nullptr) {
-		if (bButtonIsPressed && yButtonIsPressed) {
-			auto direction = leftControllerPosition - rightControllerPosition;
-			direction.abs();
-			auto dist = direction.length();
-
-			if (dist < 0.1f) mesh_scale = 0.1f;
-			if (dist > 1.7f) mesh_scale = 0.5f;
-			mesh_scale = map(dist, 0.1f, 1.7f, 0.1f, 0.5f);
-		}
-	}
 	if (path_list_1.size() > 1) {
 		//drawpath(ctx, path_list_1);
 		drawpath(ctx, path_list_2);
@@ -1004,25 +990,6 @@ void vr_mesh_view::draw(cgv::render::context& ctx)
 
 	// check if mesh is loaded
 	if (MI.is_constructed()) {
-		if (last_scaling != mesh_scale) {
-			mat3 scaling;
-			scaling.identity();
-			scaling *= (1 / last_scaling) * mesh_scale;
-
-			vec3 dummyTranslation;
-			dummyTranslation.zeros();
-
-			//M.transform(scaling, dummyTranslation);
-			//add_rotation(scaling);
-
-			last_scaling = mesh_scale;
-
-			//MI.destruct(ctx);
-			//MI.construct(ctx, M);
-
-			// TODO re-implement scaling
-		}
-
 		// draw mesh
 		MI.draw_all(ctx, false, true);
 
@@ -1126,6 +1093,10 @@ void vr_mesh_view::create_gui() {
 		"save=true;save_title='save obj file';w=140");
 
 	align("\a");
+	add_member_control(this, "scale", mesh_scale, "value_slider", "min=0.01;max=3;ticks=true;log=true");
+	align("\b");
+
+	align("\a");
 	add_decorator("Smoothing", "heading", "level=3");
 	connect_copy(add_button("apply")->click, rebind(this, &vr_mesh_view::applySmoothing));
 	align("\b");
@@ -1133,7 +1104,7 @@ void vr_mesh_view::create_gui() {
 	if (begin_tree_node("mesh options", translate_vector, false, "options='w140';align=' '")) {
 		align("\a");
 
-		auto show = begin_tree_node("vertices", show_vertices, false, "options='w=100';align=' '");
+		bool show = begin_tree_node("vertices", show_vertices, false, "options='w=100';align=' '");
 		add_member_control(this, "show", show_vertices, "toggle", "w=42;shortcut='w'", " ");
 		add_member_control(this, "", sphere_style.surface_color, "", "w=42");
 		if (show) {
@@ -1229,7 +1200,10 @@ bool vr_mesh_view::read_mesh(const std::string& file_name)
 		transformation_matrix.identity();
 		mesh_rotation_matrix.identity();
 		mesh_translation_vector.zeros();
-		mesh_rotation_quat = quat(mesh_rotation_matrix);
+		// scale the mesh
+		mesh_rotation_matrix *= mesh_scale;
+		M.transform(mesh_rotation_matrix, mesh_translation_vector);
+
 		float volume = mesh_utils::volume(he);
 		float surface = mesh_utils::surface(he);
 		label_text = "Volume: " + std::to_string(volume) + "\nSurface: " + std::to_string(surface);
@@ -1358,7 +1332,6 @@ void vr_mesh_view::add_rotation(mat3 r3) {
 
 	transformation_matrix = transformation_matrix * r4;
 	mesh_rotation_matrix = r3 * mesh_rotation_matrix;
-	mesh_rotation_quat = mesh_rotation_quat * quat(r3);
 }
 
 // add rotation to matrix via 3x3 rotation matrix
