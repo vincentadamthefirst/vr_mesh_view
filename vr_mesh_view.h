@@ -60,6 +60,7 @@ protected:
 
 	// render information for mesh
 	cgv::render::mesh_render_info MI;
+	cgv::render::mesh_render_info MI_smoothing;
 
 	// keep deadzone and precision vector for left controller
 	cgv::gui::vr_server::vec_flt_flt left_deadzone_and_precision;
@@ -126,6 +127,7 @@ protected:
 	// renderers & shaders
 	cgv::render::render_info r_info;
 	cgv::render::shader_program mesh_prog;
+	cgv::render::shader_program mesh_prog_smoothing;
 
 	// coloring & rendering information
 	cgv::render::sphere_render_style sphere_style;
@@ -133,7 +135,7 @@ protected:
 	cgv::render::CullingMode cull_mode;
 	cgv::render::ColorMapping color_mapping;
 	cgv::render::IlluminationMode illumination_mode;
-	rgb surface_color;
+	rgb surface_color = rgb(0,0,1);
 
 	// the mesh
 	bool have_new_mesh;
@@ -208,6 +210,12 @@ protected:
 	cgv::media::font::FontFaceAttributes label_face_type;
 
 
+	
+	mesh_type smoothingMesh;
+	box3 B_smoothing;
+
+	bool have_new_smoothingMesh;
+	bool smoothingM = false;
 
 
 
@@ -259,6 +267,7 @@ public:
 	void visit_tree(AabbTree<triangle>::AabbNode* a);
 
 	void draw_surface(cgv::render::context& ctx, bool opaque_part);
+	void draw_surface_2(cgv::render::context& ctx, bool opaque_part);
 
 	void add_translation(vec3 v);
 	void add_translation(mat3 r, vec3 v);
@@ -282,6 +291,8 @@ public:
 	void do_the_animation();
 	void along_path_go();
 	void along_path_back();
+
+	void show_selected_smoothing_faces(HE_Face* f);
 };
 
 ///@}
