@@ -335,8 +335,26 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				tessellation(origin, direction);
 			}
 				break;
-			case vr::VR_LEFT_STICK_LEFT:
+			case vr::VR_LEFT_STICK_LEFT: 
+			{
 				leftButton1IsPressed = true;
+				vec3 origin, direction;
+				vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
+				//global to local
+				vec3 new_origin = global_to_local(origin);
+				vec3 point_on_ray = origin + direction;
+				vec3 new_point_on_ray = global_to_local(point_on_ray);
+				vec3 new_dir = new_point_on_ray - new_origin;
+				// create ray
+				ray_intersection::ray vertex_ray = ray_intersection::ray(new_origin, new_dir);
+
+				float t = 0.0f;
+				std::vector<HE_Vertex*> vertices_of_face = he->GetVerticesForFace(ray_intersection::getIntersectedFace_with_t(vertex_ray, he, t));
+
+				vec3 local_intersection_point = ray_intersection::getIntersectionPoint(vertex_ray, t);
+				if (ray_intersection::vertexIntersection(local_intersection_point, vertices_of_face, intersectedVertex))
+					isVertexPicked = true;
+			}
 				break;
 			case vr::VR_RIGHT_STICK_DOWN:
 				along_path_go();
@@ -525,19 +543,8 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					if (intersection_controller_indices[i] != ci)
 						continue;
 
-					vec3 new_intersection = origin + intersection_offsets[i] * direction;
-					
-					//global to local
-					vec3 local_origin = global_to_local(origin);
-					vec3 point_on_ray = origin + direction;
-					vec3 new_point_on_ray = global_to_local(point_on_ray);
-					vec3 local_direction = new_point_on_ray - local_origin;
-					//global to local
-					
-					// create ray
-					ray_intersection::ray vertex_ray = ray_intersection::ray(local_origin, local_direction);
-					
 					if (ci == 1) { // right controller
+						vec3 new_intersection = origin + intersection_offsets[i] * direction;
 						// get translation between previous and current intersection point
 						vec3 translation = new_intersection - intersection_points[i];
 
@@ -562,23 +569,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 							if (isVertexPicked) {
 								vec3 last_pos = vrpe.get_last_position();
 								vec3 pos = vrpe.get_position();
-								vr_mesh_view::vertex_manipulate(intersectedVertex, pos - last_pos);
-							}
-							else {
-								//std::vector<HE_Vertex*> vertices_of_face = he->GetVerticesForFace(ray_intersection::getIntersectedFace(ray_intersection::ray(origin, direction), he));
-								//changed from global to local
-								float t = 0.0f;
-								std::vector<HE_Vertex*> vertices_of_face = he->GetVerticesForFace(ray_intersection::getIntersectedFace_with_t(vertex_ray, he, t));
-								
-								//if (ray_intersection::vertexIntersection(new_intersection, vertices_of_face, intersectedVertex)) {
-								//changed from global to local
-								vec3 local_intersection_point = ray_intersection::getIntersectionPoint(vertex_ray, t);
-								if (ray_intersection::vertexIntersection(local_intersection_point, vertices_of_face, intersectedVertex)) {
-									isVertexPicked = true;
-									vec3 last_pos = vrpe.get_last_position();
-									vec3 pos = vrpe.get_position();
-									vr_mesh_view::vertex_manipulate(intersectedVertex, pos - last_pos);
-								}
+								vr_mesh_view::vertex_manipulate(intersectedVertex, global_to_local(pos), global_to_local(last_pos));
 							}
 						}
 						//Rotation
@@ -1611,10 +1602,10 @@ void vr_mesh_view::tessellation(const vec3& origin, const vec3& direction) {
 	}
 }
 
-void vr_mesh_view::vertex_manipulate(HE_Vertex* vertex, vec3 pos_change) {
+void vr_mesh_view::vertex_manipulate(HE_Vertex* vertex, vec3 pos, vec3 last_pos) {
 
-	if (he->changeVertexPos(vertex, vertex->position + pos_change)) {
-		M.position(vertex->originalIndex) = M.position(vertex->originalIndex) + pos_change;
+	if (he->changeVertexPos(vertex, vertex->position + pos - last_pos )) {
+		M.position(vertex->originalIndex) = M.position(vertex->originalIndex) + local_to_global(pos) - local_to_global(last_pos);
 		post_redraw();
 	}
 	else
