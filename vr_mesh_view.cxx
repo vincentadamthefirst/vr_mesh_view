@@ -323,7 +323,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				along_path_go();
 				break;
 			*/
-			case vr::VR_RIGHT_BUTTON2:
+			case vr::VR_RIGHT_STICK_LEFT:
 			{
 				rightButton2IsPressed = true;
 				vec3 go_origin = defined_path[0] - defined_path[pathi];
@@ -351,7 +351,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				yButtonIsPressed = false;
 				break;
 			//use right controller to define the translation path
-			case vr::VR_RIGHT_BUTTON2:
+			case vr::VR_RIGHT_STICK_LEFT:
 			{
 				rightButton2IsPressed = false;
 								
