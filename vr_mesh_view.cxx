@@ -325,15 +325,24 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 		if (vrke.get_action() == cgv::gui::KA_PRESS) {
 			switch (vrke.get_key()) {
 			case vr::VR_RIGHT_MENU:
+			{
+				std::cout << "xxxxxxxxxx" << animationmode << std::endl;
 				bButtonIsPressed = true;
-				if (animationmode)
-					animationmode = false;
-				else
-					animationmode = true;
+				animationmode = animationmode ? false : true;
+				std::cout << "yyyyyy" << animationmode << std::endl;
+				label_outofdate = true;
+				post_redraw();
 				break;
-			case vr::VR_LEFT_MENU:
+			}
+			case vr::VR_LEFT_MENU: 
+			{
+				animationmode = animationmode ? false : true;
 				yButtonIsPressed = true;
+				label_outofdate = true;
+				post_redraw();
 				break;
+			}
+				
 
 			case vr::VR_LEFT_BUTTON1:
 			{
@@ -346,107 +355,117 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 			case vr::VR_LEFT_STICK_UP:
 			//case vr::VR_RIGHT_BUTTON1:
 			{
-				vec3 origin, direction;
-				rightButton1IsPressed = true;
-				vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
-				tessellation(origin, direction);
+				if (!animationmode) {
+					vec3 origin, direction;
+					rightButton1IsPressed = true;
+					vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
+					tessellation(origin, direction);
+				}
+				
 			}
 				break;
 			case vr::VR_LEFT_STICK_LEFT: 
 			{
-				leftButton1IsPressed = true;
-				std::cout << "VR left stick left is pressed" << std::endl;
-				vec3 origin, direction;
-				vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
-				//global to local
-				vec3 new_origin = global_to_local(origin);
-				vec3 point_on_ray = origin + direction;
-				vec3 new_point_on_ray = global_to_local(point_on_ray);
-				vec3 new_dir = new_point_on_ray - new_origin;
-				// create ray
-				ray_intersection::ray vertex_ray = ray_intersection::ray(new_origin, new_dir);
-				//ray_intersection::ray vertex_ray = ray_intersection::ray(origin, direction);
+				if (!animationmode) {
+					leftButton1IsPressed = true;
+					std::cout << "VR left stick left is pressed" << std::endl;
+					vec3 origin, direction;
+					vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
+					//global to local
+					vec3 new_origin = global_to_local(origin);
+					vec3 point_on_ray = origin + direction;
+					vec3 new_point_on_ray = global_to_local(point_on_ray);
+					vec3 new_dir = new_point_on_ray - new_origin;
+					// create ray
+					ray_intersection::ray vertex_ray = ray_intersection::ray(new_origin, new_dir);
+					//ray_intersection::ray vertex_ray = ray_intersection::ray(origin, direction);
 
-				float t = 0.0f;
-				HE_Face * face;
-				bool f = ray_intersection::getIntersectedFace_with_t(vertex_ray, he, t,face);
-				if (f) {
-					std::cout << "there is an intersecting face" << std::endl;
-					std::vector<HE_Vertex*> vertices_of_face = he->GetVerticesForFace(face);
+					float t = 0.0f;
+					HE_Face* face;
+					bool f = ray_intersection::getIntersectedFace_with_t(vertex_ray, he, t, face);
+					if (f) {
+						std::cout << "there is an intersecting face" << std::endl;
+						std::vector<HE_Vertex*> vertices_of_face = he->GetVerticesForFace(face);
 
-					vec3 local_intersection_point = ray_intersection::getIntersectionPoint(vertex_ray, t);
-					if (ray_intersection::vertexIntersection(local_intersection_point, vertices_of_face, intersectedVertex)) {
-						isVertexPicked = true;
-						std::cout << "Vertex is picked" << std::endl;
+						vec3 local_intersection_point = ray_intersection::getIntersectionPoint(vertex_ray, t);
+						if (ray_intersection::vertexIntersection(local_intersection_point, vertices_of_face, intersectedVertex)) {
+							isVertexPicked = true;
+							std::cout << "Vertex is picked" << std::endl;
+						}
+
 					}
-						
-				}else
-					std::cout << "no intersecting face" << std::endl;
-				
+					else
+						std::cout << "no intersecting face" << std::endl;
+				}
 			}
 				break;
 			case vr::VR_RIGHT_STICK_DOWN:
 			{
-				rightButton2IsPressed = true;
-				vec3 go_origin = defined_path[0] - defined_path[pathi];
-				add_translation(go_origin);
-				mat3 dummyRotation;
-				dummyRotation.identity();
-				M.transform(dummyRotation, go_origin);
+				if (animationmode) {
+					rightButton2IsPressed = true;
+					vec3 go_origin = defined_path[0] - defined_path[pathi];
+					add_translation(go_origin);
+					mat3 dummyRotation;
+					dummyRotation.identity();
+					M.transform(dummyRotation, go_origin);
 
-				B = M.compute_box();
-				have_new_mesh = true;
-				post_redraw();
-				pathi = 0;
-				break;
+					B = M.compute_box();
+					have_new_mesh = true;
+					post_redraw();
+					pathi = 0;
+					break;
+				}
 			}
 						
 			case vr::VR_LEFT_STICK_RIGHT:
 			//case vr::VR_RIGHT_BUTTON1:
 			{
-			
-				if (smoothingpoints.size() == 0) {
-					std::cout << "smoothing whole mesh" << std::endl;
-					applySmoothing();
+				if (!animationmode) {
+					if (smoothingpoints.size() == 0) {
+						std::cout << "smoothing whole mesh" << std::endl;
+						applySmoothing();
+					}
+					else {
+						std::cout << "smoothing some points" << std::endl;
+						applySmoothingPoints();
+						show_smoothing = true;
+					}
+					smoothingMesh.clear();
+					smoothingpoints.clear();
+					break;
 				}
-				else {
-					std::cout << "smoothing some points" << std::endl;
-					applySmoothingPoints();
-					show_smoothing = true;
-				}
-				smoothingMesh.clear();
-				smoothingpoints.clear();
-				break;
 			}
 			//case vr::VR_RIGHT_BUTTON2:
 			case vr::VR_LEFT_STICK_DOWN:
 			{
-				std::cout << "choose smoothing face" << std::endl;
-				vec3 origin, direction;
-				//rightButton3IsPressed = true;
-				vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
-				vec3 new_origin = global_to_local(origin);
-				vec3 point_on_ray = origin + direction;
-				vec3 new_point_on_ray = global_to_local(point_on_ray);
-				vec3 new_dir = new_point_on_ray - new_origin;
-				ray_intersection::ray tes_ray = ray_intersection::ray(new_origin, new_dir);
-				//ray_intersection::ray tes_ray = ray_intersection::ray(origin, direction);
-				float t = 0.0;
-				bool tt = ray_intersection::rayTreeIntersect(tes_ray, aabb_tree, t);
-				std::cout << tt << std::endl;
-				if (tt) {
-					HE_Face* face = ray_intersection::getIntersectedFace(tes_ray, he);
-					
-					std::vector<HE_Vertex*> vertices_of_face = he->GetVerticesForFace(face);
-					for (int i = 0; i < 3; ++i) {
-						// f is not a element of boundaryFaces
-						if (std::find(smoothingpoints.begin(), smoothingpoints.end(), vertices_of_face[i]) == smoothingpoints.end())
-							smoothingpoints.push_back(vertices_of_face[i]);
+				if (!animationmode) {
+					std::cout << "choose smoothing face" << std::endl;
+					vec3 origin, direction;
+					//rightButton3IsPressed = true;
+					vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
+					vec3 new_origin = global_to_local(origin);
+					vec3 point_on_ray = origin + direction;
+					vec3 new_point_on_ray = global_to_local(point_on_ray);
+					vec3 new_dir = new_point_on_ray - new_origin;
+					ray_intersection::ray tes_ray = ray_intersection::ray(new_origin, new_dir);
+					//ray_intersection::ray tes_ray = ray_intersection::ray(origin, direction);
+					float t = 0.0;
+					bool tt = ray_intersection::rayTreeIntersect(tes_ray, aabb_tree, t);
+					std::cout << tt << std::endl;
+					if (tt) {
+						HE_Face* face = ray_intersection::getIntersectedFace(tes_ray, he);
+
+						std::vector<HE_Vertex*> vertices_of_face = he->GetVerticesForFace(face);
+						for (int i = 0; i < 3; ++i) {
+							// f is not a element of boundaryFaces
+							if (std::find(smoothingpoints.begin(), smoothingpoints.end(), vertices_of_face[i]) == smoothingpoints.end())
+								smoothingpoints.push_back(vertices_of_face[i]);
+						}
+
+						show_selected_smoothing_faces(face);
+
+
 					}
-
-					show_selected_smoothing_faces(face);
-					
-
 				}
 			}
 			break;
@@ -466,17 +485,19 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				break;
 			case vr::VR_LEFT_STICK_LEFT:
 			{
-				leftButton1IsPressed = false;
-				if (isVertexPicked) {
-					M.compute_vertex_normals();
-					B = M.compute_box();
-					have_new_mesh = true;
-					post_redraw();
-					std::cout << "Vertex is moved" << std::endl;
-					build_aabbtree_from_triangles(he, aabb_tree);
-				}
-				isVertexPicked = false;			
-				break;
+				if (!animationmode) {
+					leftButton1IsPressed = false;
+					if (isVertexPicked) {
+						M.compute_vertex_normals();
+						B = M.compute_box();
+						have_new_mesh = true;
+						post_redraw();
+						std::cout << "Vertex is moved" << std::endl;
+						build_aabbtree_from_triangles(he, aabb_tree);
+					}
+					isVertexPicked = false;
+					
+				}break;
 			}
 			case vr::VR_RIGHT_STICK_DOWN:
 			{
@@ -487,19 +508,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				}
 
 				break;
-			}
-			case vr::VR_LEFT_STICK_DOWN:
-			{
-				/*if (smoothingpoints.size() == 0) {
-					std::cout << "smoothing whole mesh" << std::endl;
-					applySmoothing();
-				}					
-				else {
-					std::cout << "smoothing some points" << std::endl;
-					applySmoothingPoints();
-				}			
-				rightButton3IsPressed = false;*/
-			}
+			}			
 			break;
 			}
 		}
@@ -556,7 +565,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 						continue;
 
 					if (ci == 1) { // right controller
-						if (rightButton2IsPressed == false) {
+						if (rightButton2IsPressed == false && animationmode) {
 							if (animation_start == false) {
 								animation_start = true;
 								vec3 mesh_centroid = aabb_tree.Root()->get_box().get_center();
@@ -592,14 +601,14 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 
 					if (ci == 0) { // left controller
 						//Vertex Manipulation
-						if (leftButton1IsPressed) {
+						if (leftButton1IsPressed && !animationmode) {
 							if (isVertexPicked) {
 								vec3 last_pos = vrpe.get_last_position();
 								vec3 pos = vrpe.get_position();
 								vr_mesh_view::vertex_manipulate(intersectedVertex, global_to_local(pos), global_to_local(last_pos));
 							}
 						}
-						else if (rightButton2IsPressed == true && animation_start == true) {
+						else if (rightButton2IsPressed == true && animation_start == true && animationmode) {
 								if (pathi != defined_path.size() - 1) {
 									vec3 translation_1 = defined_path[pathi + 1] - defined_path[pathi];
 									add_translation(translation_1);
@@ -613,7 +622,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 								}
 							}						
 						//Rotation
-						else {
+						else if(animationmode){
 							vec3 last_pos = vrpe.get_last_position();
 
 							vec3 pos = vrpe.get_position();
@@ -772,7 +781,7 @@ void vr_mesh_view::init_frame(cgv::render::context& ctx)
 		glColor4f(label_color[0], label_color[1], label_color[2], 1);
 		ctx.set_cursor(20, (int)ceil(label_size) + 20);
 		ctx.enable_font_face(label_font_face, label_size);
-		ctx.output_stream() << label_text << "\n";
+		ctx.output_stream() << (animationmode ? animationmode_text : mesheditingmode_text) << label_text << "\n";
 		ctx.output_stream().flush(); // make sure to flush the stream before change of font size or font face
 
 		ctx.enable_font_face(label_font_face, 0.7f * label_size);

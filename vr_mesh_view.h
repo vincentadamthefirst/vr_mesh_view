@@ -194,7 +194,8 @@ protected:
 
 
 	std::vector<HE_Vertex*> smoothingpoints;
-
+	const std::string mesheditingmode_text = "Mesh Editing Mode \nButtons:\nMenu: Change Mode\nL-Stick U: Tesselation\nL-Stick L: Vertex Manipulation\nL-Stick D: Select Smoothing Face\nL-Stick R: Apply Smoothing\n\n";
+	const std::string animationmode_text = "Animation Mode \nButtons:\nMenu: Change Mode\nTouch R-Stick: Translation \nTouch L-Stick: Rotation\n\n\n\n";
 	std::string label_text;
 	int label_font_idx;
 	bool label_upright;
