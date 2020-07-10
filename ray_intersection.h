@@ -120,7 +120,7 @@ namespace ray_intersection {
 		}
 	}
 	
-	HE_Face* getIntersectedFace_with_t(ray& r, HE_Mesh* mesh, float& main_t)
+	bool getIntersectedFace_with_t(ray& r, HE_Mesh* mesh, float& main_t, HE_Face*& f)
 	{
 		vec3 v0, v1, v2;
 		bool intersect = false;
@@ -141,10 +141,11 @@ namespace ray_intersection {
 		}
 		if (intersect) {
 			main_t = temp_t;
-			return temp_face;
+			f = temp_face;
+			return true;
 		}
 		else {
-			return temp_face;
+			return false;
 		}
 	}
 	
@@ -227,7 +228,9 @@ namespace ray_intersection {
 	{
 		//This constant might need a change depending on the vertice allignment of loaded simple mesh. Precision of vertex intersection can be obtained easily
 		//using distance debugging on line 217
-		float blckrn_constant = 0.00025;
+		//float blckrn_constant = 0.00025;
+		//using distance debugging on line 217
+		float blckrn_constant = 0.25;
 		//This constant adjusts the required minimum length between the intersection point and the center position of the intersected vertex
 
 		float tmp_distance = 500;

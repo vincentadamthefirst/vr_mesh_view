@@ -338,6 +338,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 			case vr::VR_LEFT_STICK_LEFT: 
 			{
 				leftButton1IsPressed = true;
+				std::cout << "VR left stick left is pressed" << std::endl;
 				vec3 origin, direction;
 				vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
 				//global to local
@@ -347,13 +348,24 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				vec3 new_dir = new_point_on_ray - new_origin;
 				// create ray
 				ray_intersection::ray vertex_ray = ray_intersection::ray(new_origin, new_dir);
+				//ray_intersection::ray vertex_ray = ray_intersection::ray(origin, direction);
 
 				float t = 0.0f;
-				std::vector<HE_Vertex*> vertices_of_face = he->GetVerticesForFace(ray_intersection::getIntersectedFace_with_t(vertex_ray, he, t));
+				HE_Face * face;
+				bool f = ray_intersection::getIntersectedFace_with_t(vertex_ray, he, t,face);
+				if (f) {
+					std::cout << "there is an intersecting face" << std::endl;
+					std::vector<HE_Vertex*> vertices_of_face = he->GetVerticesForFace(face);
 
-				vec3 local_intersection_point = ray_intersection::getIntersectionPoint(vertex_ray, t);
-				if (ray_intersection::vertexIntersection(local_intersection_point, vertices_of_face, intersectedVertex))
-					isVertexPicked = true;
+					vec3 local_intersection_point = ray_intersection::getIntersectionPoint(vertex_ray, t);
+					if (ray_intersection::vertexIntersection(local_intersection_point, vertices_of_face, intersectedVertex)) {
+						isVertexPicked = true;
+						std::cout << "Vertex is picked" << std::endl;
+					}
+						
+				}else
+					std::cout << "no intersecting face" << std::endl;
+				
 			}
 				break;
 			case vr::VR_RIGHT_STICK_DOWN:
@@ -461,6 +473,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					B = M.compute_box();
 					have_new_mesh = true;
 					post_redraw();
+					std::cout << "Vertex is moved" << std::endl;
 					build_aabbtree_from_triangles(he, aabb_tree);
 				}
 				isVertexPicked = false;			
@@ -544,7 +557,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 						continue;
 
 					if (ci == 1) { // right controller
-						vec3 new_intersection = origin + intersection_offsets[i] * direction;
+						/*vec3 new_intersection = origin + intersection_offsets[i] * direction;
 						// get translation between previous and current intersection point
 						vec3 translation = new_intersection - intersection_points[i];
 
@@ -560,7 +573,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 						// mesh is animated
 						B = M.compute_box();
 						have_new_mesh = true;
-						post_redraw();
+						post_redraw();*/
 					}
 
 					if (ci == 0) { // left controller
@@ -574,7 +587,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 						}
 						//Rotation
 						else {
-							vec3 last_pos = vrpe.get_last_position();
+							/*vec3 last_pos = vrpe.get_last_position();
 							vec3 pos = vrpe.get_position();
 
 							mat3 rotation = vrpe.get_rotation_matrix();
@@ -590,7 +603,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 							// mesh is animated
 							B = M.compute_box();
 							have_new_mesh = true;
-							post_redraw();
+							post_redraw();*/
 						}					
 					}
 				}
@@ -1606,6 +1619,7 @@ void vr_mesh_view::vertex_manipulate(HE_Vertex* vertex, vec3 pos, vec3 last_pos)
 
 	if (he->changeVertexPos(vertex, vertex->position + pos - last_pos )) {
 		M.position(vertex->originalIndex) = M.position(vertex->originalIndex) + local_to_global(pos) - local_to_global(last_pos);
+		//std::cout << "Vertex is manipulated." << std::endl;
 		post_redraw();
 	}
 	else
