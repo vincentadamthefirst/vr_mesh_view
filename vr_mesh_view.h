@@ -171,6 +171,7 @@ protected:
 	// if the controller buttons are pressed (based on oculus)
 	bool bButtonIsPressed = false;
 	bool yButtonIsPressed = false;
+
 	//tessellation 
 	bool rightButton1IsPressed = false;
 	int nr_tes_intersection = 0;
@@ -181,12 +182,16 @@ protected:
 	bool rightButton3IsPressed = false;
 
 	HE_Vertex* intersectedVertex;
+
+
+
 	// positions only get written when y and b key (oculus) are held
 	vec3 rightControllerPosition;
 	vec3 leftControllerPosition;
-
+	bool aniButton1IsPressed = false;
 	OcculusController leftController;
 	OcculusController rightController;
+
 
 	std::vector<HE_Vertex*> smoothingpoints;
 
@@ -217,11 +222,13 @@ protected:
 	bool have_new_smoothingMesh;
 	bool smoothingM = false;
 
+	bool animationmode = false;
+
 
 
 public:
 	void init_cameras(vr::vr_kit* kit_ptr);
-
+	
 	void start_camera();
 
 	void stop_camera();
@@ -282,17 +289,16 @@ public:
 
 	void updateSimpleMesh();
 	void applySmoothing();
+
 	void applySmoothingPoints();
 	void tessellation(const vec3& origin, const vec3& direction);
 	void vertex_manipulate(HE_Vertex* vertex, vec3 pos, vec3 last_pos);
-	void start_define_path(const vec3& intersection_point, const vec3& origin);
-	void end_define_path(const vec3& origin);
 	void drawpath(cgv::render::context& ctx, std::vector<vec3> path_list);
-	void do_the_animation();
-	void along_path_go();
-	void along_path_back();
 
-	void show_selected_smoothing_faces(HE_Face* f);
+
+	void show_selected_smoothing_faces(HE_Face* f);	
+	
+
 };
 
 ///@}
