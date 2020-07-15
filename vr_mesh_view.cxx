@@ -262,7 +262,7 @@ vr_mesh_view::vr_mesh_view()
 
 
 
-	show_smoothing = false;
+	destructSmoothingMesh = false;
 
 
 	// ONLY in code changeable values
@@ -297,8 +297,13 @@ void vr_mesh_view::on_set(void* member_ptr)
 			M.write(file_name);
 		}
 		else {
-			if (read_mesh(file_name))
+			if (read_mesh(file_name)) {
 				have_new_mesh = true;
+				smoothingpoints.clear();
+				smoothingMesh.clear();
+				destructSmoothingMesh = true;
+			}
+				
 		}
 	}
 	update_member(member_ptr);
@@ -334,6 +339,9 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				else
 					std::cout << "Mesh Editing Mode" << std::endl;
 				label_outofdate = true;
+				destructSmoothingMesh = true;
+				smoothingpoints.clear();
+				smoothingMesh.clear();
 				post_redraw();
 				break;
 			}
@@ -346,11 +354,14 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					std::cout << "Mesh Editing Mode" << std::endl;
 				yButtonIsPressed = true;
 				label_outofdate = true;
+				destructSmoothingMesh = true;
+				smoothingpoints.clear();
+				smoothingMesh.clear();
 				post_redraw();
 				break;
 			}
 				
-
+			//debug function
 			case vr::VR_LEFT_BUTTON1:
 			{
 				auto fs = he->GetFaces();
@@ -446,7 +457,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					else {
 						std::cout << "smoothing some points" << std::endl;
 						applySmoothingPoints();
-						show_smoothing = true;
+						destructSmoothingMesh = true;
 					}
 					smoothingMesh.clear();
 					smoothingpoints.clear();
@@ -459,7 +470,6 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				if (!animationmode) {
 					std::cout << "choose smoothing face" << std::endl;
 					vec3 origin, direction;
-					//rightButton3IsPressed = true;
 					vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
 					vec3 new_origin = global_to_local(origin);
 					vec3 point_on_ray = origin + direction;
@@ -479,10 +489,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 							if (std::find(smoothingpoints.begin(), smoothingpoints.end(), vertices_of_face[i]) == smoothingpoints.end())
 								smoothingpoints.push_back(vertices_of_face[i]);
 						}
-						std::cout << "select face" << std::endl;
 						show_selected_smoothing_faces(face);
-
-
 					}
 				}
 			}
@@ -855,9 +862,9 @@ void vr_mesh_view::init_frame(cgv::render::context& ctx)
 	}
 	have_new_smoothingMesh = false;
 
-	if (show_smoothing) {
+	if (destructSmoothingMesh) {
 		MI_smoothing.destruct(ctx);
-		show_smoothing = false;
+		destructSmoothingMesh = false;
 	}
 		
 
@@ -1741,7 +1748,7 @@ void vr_mesh_view::drawpath(cgv::render::context& ctx,std::vector<vec3> path_lis
 }
 
 void vr_mesh_view::show_selected_smoothing_faces(HE_Face* f) {
-	std::cout << "show soothing faces" << std::endl;
+	std::cout << "add new face to smoothing mesh" << std::endl;
 	// add new faces to simple mesh#
 	std::vector<HE_Vertex*> Fvertices = he->GetVerticesForFace(f);
 	//create a new face

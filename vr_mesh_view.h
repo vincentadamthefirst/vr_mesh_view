@@ -157,7 +157,7 @@ protected:
 	bool show_colored_boxes;
 
 
-	bool show_smoothing;
+	bool destructSmoothingMesh;
 
 	// gui object
 	vec3 translate_vector;
@@ -221,7 +221,6 @@ protected:
 	box3 B_smoothing;
 
 	bool have_new_smoothingMesh;
-	bool smoothingM = false;
 
 	bool animationmode = false;
 
@@ -287,8 +286,6 @@ public:
 
 	void scaleMesh(mesh_type& M, float scale);
 
-
-	void updateSimpleMesh();
 	void applySmoothing();
 
 	void applySmoothingPoints();
