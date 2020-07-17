@@ -37,6 +37,7 @@ namespace ray_intersection {
 		vec3 o = r.origin;
 		vec3 e1 = v1 - v0;
 		vec3 e2 = v2 - v0;
+		
 		vec3 p = cross(d, e2);
 		float a = dot(e1, p);
 
@@ -57,8 +58,8 @@ namespace ray_intersection {
 			return false;
 
 		t = f * dot(e2, q);
-
 		return (t >= 0);
+		
 	}
 	
 	bool rayFaceIntersect(ray& r, HE_Mesh* mesh, HE_Face* face, float& t)
@@ -98,20 +99,29 @@ namespace ray_intersection {
 	{
 		vec3 v0, v1, v2;
 		bool intersect = false;
-		float temp_t = 1000000;
+		float temp_t = std::numeric_limits<float>::max();//1000000;
 		float t = 0;
 
 		HE_Face* temp_face = new HE_Face();
-
+		int i = 0;
 		for (auto face : *mesh->GetFaces()) {
+
+
+			
+
 			if (rayFaceIntersect(r, mesh, face, t))
 			{
+				i++;
+				std::cout << "face" << i << std::endl;
 				intersect = true;
 				if (t < temp_t) {
 					temp_t = t;
 					temp_face = face;
 				}		
-			}
+			}else
+				std::cout << "face is not intersecting" << std::endl;
+
+
 		}
 		if (intersect)
 			return temp_face;
@@ -124,7 +134,7 @@ namespace ray_intersection {
 	{
 		vec3 v0, v1, v2;
 		bool intersect = false;
-		float temp_t = 1000000;
+		float temp_t = std::numeric_limits<float>::max();;
 		float t = 0;
 
 		HE_Face* temp_face = new HE_Face();

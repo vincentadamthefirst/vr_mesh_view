@@ -159,3 +159,27 @@ bool HE_Mesh::changeVertexPos(HE_Vertex* vertex, vec3 new_pos) {
 	}
 	return false;
 }
+
+bool HE_Mesh::deleteFace(HE_Face* f){
+	//deleting face and half edges  // new connections for vertices and twin HE  still missing
+	auto it = std::find(faces.begin(), faces.end(), f);
+	if (it == faces.end())
+		return false;
+
+	auto e = f->adjacent;
+	auto e2 = e->next;
+	auto e3 = e2->next;
+
+	auto it_e = std::find(halfEdges.begin(), halfEdges.end(), e);
+	if(it_e != halfEdges.end())
+		halfEdges.erase(it_e);
+	auto it_e2 = std::find(halfEdges.begin(), halfEdges.end(), e2);
+	if (it_e2 != halfEdges.end())
+		halfEdges.erase(it_e2);
+	auto it_e3 = std::find(halfEdges.begin(), halfEdges.end(), e3);
+	if (it_e3 != halfEdges.end())
+		halfEdges.erase(it_e3);
+
+	faces.erase(it);
+	return true;
+}

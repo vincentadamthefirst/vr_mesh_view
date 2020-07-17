@@ -318,8 +318,11 @@ float map(float input, float input_start, float input_end, float output_start, f
 bool vr_mesh_view::handle(cgv::gui::event& e)
 {
 	// check if vr event flag is not set and don't process events in this case
-	if ((e.get_flags() & cgv::gui::EF_VR) == 0)
+	if ((e.get_flags() & cgv::gui::EF_VR) == 0) {
+
 		return false;
+	}
+		
 
 	// check event id
 	switch (e.get_kind()) {
@@ -328,6 +331,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 		cgv::gui::vr_key_event& vrke = static_cast<cgv::gui::vr_key_event&>(e);
 
 		if (vrke.get_action() == cgv::gui::KA_PRESS) {
+			std::cout << "KA_PRESS" << std::endl;
 			switch (vrke.get_key()) {
 			case vr::VR_RIGHT_MENU:
 			{
@@ -375,6 +379,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 			case vr::VR_LEFT_STICK_UP:
 			//case vr::VR_RIGHT_BUTTON1:
 			{
+				std::cout << "animationmode" << animationmode << std::endl;
 				if (!animationmode) {
 					vec3 origin, direction;
 					rightButton1IsPressed = true;
@@ -545,8 +550,8 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 	{
 		cgv::gui::vr_throttle_event& vrte = static_cast<cgv::gui::vr_throttle_event&>(e);
 
-		std::cout << "throttle " << vrte.get_throttle_index() << " of controller " << vrte.get_controller_index()
-			<< " adjusted from " << vrte.get_last_value() << " to " << vrte.get_value() << std::endl;
+		//std::cout << "throttle " << vrte.get_throttle_index() << " of controller " << vrte.get_controller_index()
+			//<< " adjusted from " << vrte.get_last_value() << " to " << vrte.get_value() << std::endl;
 
 		return true;
 	}
@@ -649,7 +654,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 									post_redraw();
 								}
 							}						
-						//Rotation
+						//Rotation and Translation
 						else if(animationmode){
 							vec3 last_pos = vrpe.get_last_position();
 
@@ -1632,8 +1637,10 @@ void vr_mesh_view::tessellation(const vec3& origin, const vec3& direction) {
 	// create ray
 	ray_intersection::ray tes_ray = ray_intersection::ray(new_origin, new_dir);
 	float t = 0.0;
-
+	std::cout << "tesselationfunction" << std::endl;
 	if (ray_intersection::rayTreeIntersect(tes_ray, aabb_tree, t)) {
+
+		std::cout << "ray tree intersection" << std::endl;
 		vr_mesh_view::nr_tes_intersection++;
 		vec3 tes_inter_point = ray_intersection::getIntersectionPoint(tes_ray, t);
 		HE_Face* tes_face = ray_intersection::getIntersectedFace(tes_ray, he);
@@ -1641,6 +1648,9 @@ void vr_mesh_view::tessellation(const vec3& origin, const vec3& direction) {
 		//mesh_utils::getVerticesOfFace(he, tes_face, p1, p2, p3);
 
 		auto tes_point = he->GetVerticesForFace(tes_face); //three vertices in the tes_face
+
+
+		//std::cout << "size tes points" << tes_point.size() << std::endl; // always 3
 		// add three faces to the original half edge mesh
 		for (int i = 0; i < 3; i++) {
 			unsigned int vectorAIndex = tes_point[i]->originalIndex;
@@ -1656,12 +1666,24 @@ void vr_mesh_view::tessellation(const vec3& origin, const vec3& direction) {
 
 			// generating 3 half edges per triangle
 			auto halfEdgeC = he->AddHalfEdge(vectorC, vectorA, face);
+
+			
+
+
 			auto halfEdgeB = he->AddHalfEdge(vectorB, vectorC, face, halfEdgeC);
 			auto halfEdgeA = he->AddHalfEdge(vectorA, vectorB, face, halfEdgeB);
 
+			if (halfEdgeC->twin == nullptr)
+				std::cout << "no twin C"<< i << std::endl;
+			if (halfEdgeB->twin == nullptr)
+				std::cout << "no twin B" << i << std::endl;
+			if (halfEdgeA->twin == nullptr)
+				std::cout << "no twin A" << i << std::endl;
 			// closing the loop
 			halfEdgeC->next = halfEdgeA;
 		}
+		he->deleteFace(tes_face);
+
 		//create a new normal 
 		idx_type normal_idx = M.new_normal(vec3(0.0f, -1.0f, 0.0f));
 		//create a global point vector

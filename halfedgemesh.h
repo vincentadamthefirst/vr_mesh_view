@@ -81,6 +81,8 @@ public:
 	/// TODO
 	HE_Face* AddBoundary(HE_Edge* edge);
 
+	bool deleteFace(HE_Face* f);
+
 private:
 	std::vector<HE_Vertex*> vertices;
 	std::vector<HE_Edge*> halfEdges;
