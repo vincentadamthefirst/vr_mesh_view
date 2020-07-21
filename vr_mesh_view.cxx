@@ -17,6 +17,7 @@
 #include "intersection.h"
 #include "ray_intersection.h"
 #include "icosphere.h"
+#include "simple_csg.h"
 
 // typedefs
 typedef cgv::media::mesh::simple_mesh<float> mesh_type;
@@ -33,13 +34,6 @@ vec3 mesh_centroid;
 
 std::vector<vec3> defined_path2;
 std::vector<vec3> defined_path;
-
-
-
-
-
-
-
 
 void vr_mesh_view::init_cameras(vr::vr_kit* kit_ptr)
 {
@@ -289,6 +283,10 @@ vr_mesh_view::vr_mesh_view()
 	// TODO remove
 
 	auto icoSphere = IcoSphere();
+
+	auto icoMesh = icoSphere.RetrieveMesh();
+
+	auto tmp = SimpleCSG::Subtract(icoMesh, icoMesh);
 }
 	
 void vr_mesh_view::stream_help(std::ostream& os) {

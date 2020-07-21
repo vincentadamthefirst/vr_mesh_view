@@ -9,9 +9,8 @@
 typedef typename cgv::math::fvec<float, 3> vec3;
 /// type of simple mesh
 typedef cgv::media::mesh::simple_mesh<float> mesh_type;
-typedef mesh_type::idx_type idx_type;
-typedef mesh_type::vec3i vec3i;
 
+/// Class for generating the vertices and faces of an IcoSphere
 class IcoSphere {
 public:
 	/// Creates an Icosphere with the given radius, subdivisions and center
@@ -22,6 +21,7 @@ public:
 		vertices.clear();
 	}
 	
+	/// retrieves the IcoSphere as an simple_mesh
 	mesh_type RetrieveMesh();
 
 private:
@@ -45,6 +45,8 @@ private:
 private:
 	/// List containing all vertices for the mesh
 	std::vector<vec3> vertices;
+	/// List containing all edges for the mesh (all triangles)
+	std::vector<TriangleIndices> triangles;
 	/// The center for this IcoSphere
 	vec3 centerPoint;
 };

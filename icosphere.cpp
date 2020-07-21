@@ -78,11 +78,12 @@ IcoSphere::IcoSphere(float radius, int subdivisions, vec3 center) {
 		faces = faces2;
 	}
 
-	// finished the generation
+	triangles = faces;
+
 	// debug output
-	std::cout << "Generated IcoSphere with " << subdivisions << " subdivisions and radius " << radius << std::endl;
+	std::cout << "\nGenerated IcoSphere with " << subdivisions << " subdivisions and radius " << radius << std::endl;
 	std::cout << "Resulting Vertices:\t" << vertices.size() << std::endl;
-	std::cout << "Resulting Faces:\t" << faces.size() << std::endl;
+	std::cout << "Resulting Faces:\t" << faces.size() << "\n" << std::endl;
 }
 
 int IcoSphere::GetMiddlePoint(int p1, int p2, std::vector<vec3>& points, std::map<long, int>& cache, float radius) {
@@ -114,5 +115,26 @@ int IcoSphere::GetMiddlePoint(int p1, int p2, std::vector<vec3>& points, std::ma
 }
 
 mesh_type IcoSphere::RetrieveMesh() {
+	mesh_type M;
 
+	for each (auto vertex in vertices) {
+		M.new_position(vertex);
+	}
+
+	for each (auto triangle in triangles) {
+		M.start_face();
+		M.new_corner(triangle.v1);
+		M.new_corner(triangle.v2);
+		M.new_corner(triangle.v3);
+	}
+
+	M.compute_vertex_normals();
+
+	// debug output
+	std::cout << "\nRetrieved simple_mesh from IcoSphere" << std::endl;
+	std::cout << "Vertices:\t" << M.get_nr_positions() << std::endl;
+	std::cout << "Normals:\t" << M.get_nr_normals() << std::endl;
+	std::cout << "Faces:  \t" << M.get_nr_faces() << "\n" << std::endl;
+
+	return M;
 }
