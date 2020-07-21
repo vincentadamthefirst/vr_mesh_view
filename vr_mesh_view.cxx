@@ -16,6 +16,7 @@
 
 #include "intersection.h"
 #include "ray_intersection.h"
+#include "icosphere.h"
 
 // typedefs
 typedef cgv::media::mesh::simple_mesh<float> mesh_type;
@@ -284,6 +285,10 @@ vr_mesh_view::vr_mesh_view()
 	label_color = rgb(1, 1, 1);
 
 
+	// DEBUG test for icosphere generation (will be removed)
+	// TODO remove
+
+	auto icoSphere = IcoSphere();
 }
 	
 void vr_mesh_view::stream_help(std::ostream& os) {
