@@ -376,7 +376,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				break;
 			}
 				
-			case vr::VR_LEFT_STICK_UP:
+			case vr::VR_LEFT_STICK_LEFT:
 			//case vr::VR_RIGHT_BUTTON1:
 			{
 				std::cout << "animationmode" << animationmode << std::endl;
@@ -385,12 +385,12 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					rightButton1IsPressed = true;
 					vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
 					tessellation(origin, direction);
-					std::cout << "tessellation is here" << std::endl;
+					std::cout << "Here IS Tessellation!" << std::endl;
 				}
 				break;
 			}
 				
-			case vr::VR_LEFT_STICK_LEFT: 
+			case vr::VR_LEFT_STICK_UP: 
 			{
 				if (!animationmode) {
 					leftButton1IsPressed = true;
@@ -510,10 +510,10 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 			case vr::VR_LEFT_MENU:
 				yButtonIsPressed = false;
 				break;
-			case vr::VR_LEFT_STICK_UP:
+			case vr::VR_LEFT_STICK_LEFT:
 				rightButton1IsPressed = false;
 				break;
-			case vr::VR_LEFT_STICK_LEFT:
+			case vr::VR_LEFT_STICK_UP:
 			{
 				if (!animationmode) {
 					leftButton1IsPressed = false;
@@ -1628,6 +1628,8 @@ void vr_mesh_view::applySmoothingPoints() {
 }
 
 void vr_mesh_view::tessellation(const vec3& origin, const vec3& direction) {
+	std::cout << "before deletion" << std::endl;
+	he->showAllInfo(he);
 	//global to local
 	vec3 new_origin = global_to_local(origin);
 	vec3 point_on_ray = origin + direction;
@@ -1648,7 +1650,11 @@ void vr_mesh_view::tessellation(const vec3& origin, const vec3& direction) {
 		//mesh_utils::getVerticesOfFace(he, tes_face, p1, p2, p3);
 
 		auto tes_point = he->GetVerticesForFace(tes_face); //three vertices in the tes_face
+		std::cout<< "DELETE FACE "<< tes_point[0]->position << std::endl;
+		std::cout << tes_point[1]->position << std::endl;
+		std::cout << tes_point[2]->position << std::endl;
 
+		he->deleteFace(tes_face);
 
 		//std::cout << "size tes points" << tes_point.size() << std::endl; // always 3
 		// add three faces to the original half edge mesh
@@ -1682,7 +1688,7 @@ void vr_mesh_view::tessellation(const vec3& origin, const vec3& direction) {
 			// closing the loop
 			halfEdgeC->next = halfEdgeA;
 		}
-		he->deleteFace(tes_face);
+		
 
 		//create a new normal 
 		idx_type normal_idx = M.new_normal(vec3(0.0f, -1.0f, 0.0f));
@@ -1727,6 +1733,8 @@ void vr_mesh_view::tessellation(const vec3& origin, const vec3& direction) {
 		*/
 		
 		//compute the normals again
+		std::cout << "after deletion" << std::endl;
+		he->showAllInfo(he);
 		M.compute_vertex_normals();
 		B = M.compute_box();
 		have_new_mesh = true;

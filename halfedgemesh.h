@@ -82,6 +82,7 @@ public:
 	HE_Face* AddBoundary(HE_Edge* edge);
 
 	bool deleteFace(HE_Face* f);
+	void showAllInfo(HE_Mesh * he);
 
 private:
 	std::vector<HE_Vertex*> vertices;
