@@ -196,6 +196,8 @@ bool HE_Mesh::deleteFace(HE_Face* f){
 	faces.erase(it);
 	return true;
 }
+
+
 void HE_Mesh::showAllInfo(HE_Mesh * he)
 {
 	//show some informatin to compare the faces and edges before and after deletion
@@ -215,4 +217,6 @@ void HE_Mesh::showAllInfo(HE_Mesh * he)
 	std::cout << "halfedges" << halfEdges.size() << std::endl;
 	
 }
+
+
 

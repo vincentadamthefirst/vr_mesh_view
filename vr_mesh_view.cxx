@@ -1629,7 +1629,7 @@ void vr_mesh_view::applySmoothingPoints() {
 
 void vr_mesh_view::tessellation(const vec3& origin, const vec3& direction) {
 	std::cout << "before deletion" << std::endl;
-	he->showAllInfo(he);
+	//he->showAllInfo(he);
 	//global to local
 	vec3 new_origin = global_to_local(origin);
 	vec3 point_on_ray = origin + direction;
@@ -1733,8 +1733,8 @@ void vr_mesh_view::tessellation(const vec3& origin, const vec3& direction) {
 		*/
 		
 		//compute the normals again
-		std::cout << "after deletion" << std::endl;
-		he->showAllInfo(he);
+		//std::cout << "after deletion" << std::endl;
+		//he->showAllInfo(he);
 		M.compute_vertex_normals();
 		B = M.compute_box();
 		have_new_mesh = true;
