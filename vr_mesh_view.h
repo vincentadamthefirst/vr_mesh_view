@@ -294,7 +294,7 @@ public:
 	void drawpath(cgv::render::context& ctx, std::vector<vec3> path_list);
 
 
-	void show_selected_smoothing_faces(HE_Face* f);	
+	void add_face_to_smoothingMesh(HE_Face* f);
 	
 
 };

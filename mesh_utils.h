@@ -204,60 +204,11 @@ namespace mesh_utils {
         }
     }
 
-    //with acceleration structure
+    //77with acceleration structure
     float shortest_distance_AD(vec3 point, AabbTree<triangle> tree, vec3& closestPoint) {
         AabbTree<triangle>::AabbNode* rootNode = tree.Root();
         closest_point_node(point, rootNode, closestPoint);
 
         return (closestPoint - point).length();
     }
-
-    /*HE_Mesh* smoothing_laplacian(HE_Mesh* m, cgv::render::render_types::mat4 transformation_matrix) {
-        std::vector<vec3> newPositions;
-        
-        for (HE_Vertex* v : *m->GetVertices()) {
-            int number = 0;
-            vec3 newpos = vec3(0, 0, 0);
-            for (HE_Vertex* neighbor: m->GetNeighborVertices(v)) {
-                number++;
-                newpos += neighbor->position;
-            }
-            newpos /= number;
-            newPositions.push_back(newpos);
-        }
-        int i = 0;
-        for (HE_Vertex* v : *m->GetVertices()) {
-            //std::cout << i << " " << v->position << ", " << newPositions[i] << std::endl;
-            vec4 n = vec4(newPositions[i], 1);
-            vec4 newpos = n * transformation_matrix;
-            v->position = vec3(newpos.x(), newpos.y(), newpos.z());
-            ++i;
-            
-        }
-        return m;
-    }
-
-    HE_Mesh* smoothing_laplacian_points(HE_Mesh* m, std::vector<HE_Vertex*> points) {
-        std::vector<vec3> newPositions;
-        for (HE_Vertex* v : points) {
-            int number = 0;
-            vec3 newpos = vec3(0, 0, 0);
-            for (HE_Vertex* neighbor : m->GetNeighborVertices(v)) {
-                number++;
-                newpos += neighbor->position;
-            }
-            newpos /= number;
-            newPositions.push_back(newpos);
-        }
-        int i = 0;
-        for (HE_Vertex* v : points) {
-            //std::cout << i << " " << v->position << ", " << newPositions[i] << std::endl;
-            v->position = newPositions[i];
-            ++i;
-
-        }
-        return m;
-    }*/
-
-
 }

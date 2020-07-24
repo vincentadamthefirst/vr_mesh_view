@@ -16,6 +16,8 @@
 
 #include "intersection.h"
 #include "ray_intersection.h"
+#include "icosphere.h"
+#include "simple_csg.h"
 
 // typedefs
 typedef cgv::media::mesh::simple_mesh<float> mesh_type;
@@ -32,13 +34,6 @@ vec3 mesh_centroid;
 
 std::vector<vec3> defined_path2;
 std::vector<vec3> defined_path;
-
-
-
-
-
-
-
 
 void vr_mesh_view::init_cameras(vr::vr_kit* kit_ptr)
 {
@@ -284,6 +279,14 @@ vr_mesh_view::vr_mesh_view()
 	label_color = rgb(1, 1, 1);
 
 
+	// DEBUG test for icosphere generation (will be removed)
+	// TODO remove
+
+	auto icoSphere = IcoSphere();
+
+	auto icoMesh = icoSphere.RetrieveMesh();
+
+	auto tmp = SimpleCSG::Subtract(icoMesh, icoMesh);
 }
 	
 void vr_mesh_view::stream_help(std::ostream& os) {
@@ -299,6 +302,7 @@ void vr_mesh_view::on_set(void* member_ptr)
 		else {
 			if (read_mesh(file_name)) {
 				have_new_mesh = true;
+				// destruct/clear data from previous loaded mesh
 				smoothingpoints.clear();
 				smoothingMesh.clear();
 				destructSmoothingMesh = true;
@@ -333,9 +337,9 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 		if (vrke.get_action() == cgv::gui::KA_PRESS) {
 			std::cout << "KA_PRESS" << std::endl;
 			switch (vrke.get_key()) {
+			// change of modi
 			case vr::VR_RIGHT_MENU:
-			{
-				
+			{				
 				bButtonIsPressed = true;
 				animationmode = animationmode ? false : true;
 				if(animationmode)
@@ -349,6 +353,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				post_redraw();
 				break;
 			}
+			//change of modi
 			case vr::VR_LEFT_MENU: 
 			{
 				animationmode = animationmode ? false : true;
@@ -371,8 +376,8 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				auto fs = he->GetFaces();
 				HE_Face* f = *fs->begin();
 				HE_Face* f2 = *(fs->begin()+2);
-				show_selected_smoothing_faces(f);
-				show_selected_smoothing_faces(f2);
+				add_face_to_smoothingMesh(f);
+				add_face_to_smoothingMesh(f2);
 				break;
 			}
 				
@@ -450,11 +455,12 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					
 				}break;
 			}
-						
+			//apply laplacian smoothing			
 			case vr::VR_LEFT_STICK_RIGHT:
 			//case vr::VR_RIGHT_BUTTON1:
 			{
 				if (!animationmode) {
+					// if there are no faces selected for smoothing all vertices are smoothed otherwise just the selected points
 					if (smoothingpoints.size() == 0) {
 						std::cout << "smoothing whole mesh" << std::endl;
 						applySmoothing();
@@ -473,6 +479,8 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 			case vr::VR_LEFT_STICK_DOWN:
 			{
 				if (!animationmode) {
+					// select a face to apply smoothing later
+
 					std::cout << "choose smoothing face" << std::endl;
 					vec3 origin, direction;
 					vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
@@ -485,16 +493,18 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					float t = 0.0;
 					bool tt = ray_intersection::rayTreeIntersect(tes_ray, aabb_tree, t);
 					std::cout << tt << std::endl;
+					// if there is an intesection with the mesh
 					if (tt) {
 						HE_Face* face = ray_intersection::getIntersectedFace(tes_ray, he);
 
 						std::vector<HE_Vertex*> vertices_of_face = he->GetVerticesForFace(face);
 						for (int i = 0; i < 3; ++i) {
-							// f is not a element of boundaryFaces
+							//adds the vertices of the face to vector of points to smooth if they are not already in there
 							if (std::find(smoothingpoints.begin(), smoothingpoints.end(), vertices_of_face[i]) == smoothingpoints.end())
 								smoothingpoints.push_back(vertices_of_face[i]);
 						}
-						show_selected_smoothing_faces(face);
+						// add the face to the the smoothingMesh(a simple_mesh)
+						add_face_to_smoothingMesh(face);
 					}
 				}
 			}
@@ -1013,7 +1023,7 @@ void vr_mesh_view::draw_surface_2(cgv::render::context& ctx, bool opaque_part) {
 	// set default surface color for color mapping which only affects 
 	// rendering if mesh does not have per Vector colors and color_mapping is on
 	if (prog.get_color_index() != -1)
-		prog.set_attribute(ctx, prog.get_color_index(), rgb(0.7f, 0.2f, 1.0f));
+		prog.set_attribute(ctx, prog.get_color_index(), rgb(0.0f, 0.0f, 0.0f));
 	MI_smoothing.draw_all(ctx, !opaque_part, opaque_part);
 
 }
@@ -1178,8 +1188,8 @@ void vr_mesh_view::draw(cgv::render::context& ctx)
 	// check if mesh is loaded
 	if (MI.is_constructed()) {
 		// draw mesh
-		MI.draw_all(ctx, false, true);
-
+		//MI.draw_all(ctx, false, true);
+		draw_surface(ctx, true);
 		// draw bounding box
 		if (show_bounding_box) {
 			cgv::render::box_wire_renderer& box_render = cgv::render::ref_box_wire_renderer(ctx);
@@ -1542,26 +1552,12 @@ vec3 vr_mesh_view::local_to_global(vec3 pos) {
 	return pos;
 }
 
-//updates Simple mesh from HE_Mesh
-/*void vr_mesh_view::updateSimpleMesh() {
-	auto originalPositions = M.get_positions();
-
-	for (auto v : *he->GetVertices()) {
-		//std::cout << M.position(v->originalIndex) << ", " << v->position << std::endl;;
-		M.position(v->originalIndex) = v->position;
-	}
-	M.compute_vertex_normals();
-	B = M.compute_box();
-	have_new_mesh = true;
-	post_redraw();
-}*/
-
+// smoothing of the whole mesh
 void vr_mesh_view::applySmoothing() {
 	if (M.get_positions().empty()) return;
-	//he = mesh_utils::smoothing_laplacian(he, transformation_matrix);
-
+	// vector with new positions of vertices
 	std::vector<vec3> newPositions;
-
+	// calculation of the new positions of the vertices via averaging over the neighbor vertices
 	for (HE_Vertex* v : *he->GetVertices()) {
 		int number = 0;
 		vec3 newpos = vec3(0, 0, 0);
@@ -1572,33 +1568,30 @@ void vr_mesh_view::applySmoothing() {
 		newpos /= number;
 		newPositions.push_back(newpos);
 	}
+
+	// updating the positions of the vertices in the halfedge DS and simple_mesh
 	int i = 0;
 	for (HE_Vertex* v : *he->GetVertices()) {
-		//vec4 n = vec4(newPositions[i], 1);
-		//vec4 newpos = n * transformation_matrix;
-		/*vec3 newpos = vr_mesh_view::local_to_global(newPositions[i]);
-		v->position = vec3(newpos.x(), newpos.y(), newpos.z());
-		M.position(v->originalIndex) = v->position;*/
-
-
 		v->position = newPositions[i];
-		//vec4 n = vec4(v->position, 1);
-		//vec4 newpos = n * transformation_matrix;
 		vec3 newpos = vr_mesh_view::local_to_global(newPositions[i]);
 		M.position(v->originalIndex) = vec3(newpos.x(), newpos.y(), newpos.z());
 		++i;
-
 	}
 	M.compute_vertex_normals();
 	B = M.compute_box();
 	have_new_mesh = true;
 	post_redraw();
-	//transformation_matrix.identity();	
+	//rebuild aabb
 	build_aabbtree_from_triangles(he, aabb_tree);
 }
 
+// smoothing of points of selected faces
 void vr_mesh_view::applySmoothingPoints() {
+
+	// vector with new positions of vertices
 	std::vector<vec3> newPositions;
+
+	// iterate vector with points to smooth
 	for (HE_Vertex* v : smoothingpoints) {
 		int number = 0;
 		vec3 newpos = vec3(0, 0, 0);
@@ -1609,21 +1602,21 @@ void vr_mesh_view::applySmoothingPoints() {
 		newpos /= number;
 		newPositions.push_back(newpos);
 	}
+
+	// updating the positions of the vertices in the halfedge DS and simple_mesh
 	int i = 0;
 	for (HE_Vertex* v : smoothingpoints) {
 		v->position = newPositions[i];
-		//vec4 n = vec4(v->position, 1);
-		//vec4 newpos = n * transformation_matrix;
 		vec3 newpos = vr_mesh_view::local_to_global(newPositions[i]);
 		M.position(v->originalIndex) = vec3(newpos.x(), newpos.y(), newpos.z());
 		++i;
-
 	}
 	smoothingpoints.clear();
 	M.compute_vertex_normals();
 	B = M.compute_box();
 	have_new_mesh = true;
 	post_redraw();
+	// rebuild aabb
 	build_aabbtree_from_triangles(he, aabb_tree);
 }
 
@@ -1777,7 +1770,8 @@ void vr_mesh_view::drawpath(cgv::render::context& ctx,std::vector<vec3> path_lis
 
 }
 
-void vr_mesh_view::show_selected_smoothing_faces(HE_Face* f) {
+// add a new face to the second simple_mesh "smoothingMesh" which is used to diplay the selected faces for smoothing
+void vr_mesh_view::add_face_to_smoothingMesh(HE_Face* f) {
 	std::cout << "add new face to smoothing mesh" << std::endl;
 	// add new faces to simple mesh#
 	std::vector<HE_Vertex*> Fvertices = he->GetVerticesForFace(f);
