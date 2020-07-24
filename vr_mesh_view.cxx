@@ -34,7 +34,13 @@ vec3 mesh_centroid;
 
 std::vector<vec3> defined_path2;
 std::vector<vec3> defined_path;
-
+struct vec3Compare
+{
+	bool operator()( vec3& lhs,  vec3& rhs)
+	{
+		return rhs[0] < lhs[0];
+	}
+};
 void vr_mesh_view::init_cameras(vr::vr_kit* kit_ptr)
 {
 	vr::vr_camera* camera_ptr = kit_ptr->get_camera();
@@ -1621,6 +1627,7 @@ void vr_mesh_view::applySmoothingPoints() {
 }
 
 void vr_mesh_view::tessellation(const vec3& origin, const vec3& direction) {
+	M.write("xxx.obj");
 	std::cout << "before deletion" << std::endl;
 	//he->showAllInfo(he);
 	//global to local
@@ -1728,8 +1735,11 @@ void vr_mesh_view::tessellation(const vec3& origin, const vec3& direction) {
 		//compute the normals again
 		//std::cout << "after deletion" << std::endl;
 		//he->showAllInfo(he);
-		M.compute_vertex_normals();
-		B = M.compute_box();
+		
+		//M.compute_vertex_normals();
+		//B = M.compute_box();
+		
+		build_simple_mesh_from_HE();
 		have_new_mesh = true;
 		post_redraw();
 		build_aabbtree_from_triangles(he, aabb_tree);
@@ -1738,7 +1748,76 @@ void vr_mesh_view::tessellation(const vec3& origin, const vec3& direction) {
 		std::cout << "No intersection" << std::endl;
 	}
 }
+bool vr_mesh_view::build_simple_mesh_from_HE() {
 
+	int number = M.get_nr_normals();
+
+	/*std::vector<vec3> old_normals(number);
+	for(int i = 0; i < number; i++)
+		old_normals[i] = M.normal(number);*/
+
+	M.clear();
+	std::map<vec3, int> indexmap ;
+	std::map<int, HE_Vertex> vertexxmap;
+	std::map<vec3, int>::iterator it;
+	int i = 0;
+	for (auto v : *he->GetVertices()) {
+
+		vec3 pos = v->position;
+
+		idx_type tes_pos_idx = M.new_position(pos);
+		std::cout << "tes_pos_idx " << tes_pos_idx << std::endl;
+		indexmap.insert(std::make_pair(pos,tes_pos_idx));
+	    /*it = indexmap.find(i);
+		if (it != indexmap.end())
+			std::cout << "find was succesful" << std::endl;
+		else
+			std::cout << "find was not succesful" << std::endl;*/
+		//std::cout << "indexmap at pos " << indexmap.find(tes_pos_idx)->first << " " << indexmap.find(tes_pos_idx)->second  << std::endl;
+		//i++;
+	}
+	/*for (auto it = indexmap.rbegin(); it != indexmap.rend(); ++it)
+		std::cout << it->first << " " << it->second << std::endl;
+
+	std::cout << "indexmap " << indexmap.size() << std::endl;*/
+
+	
+	for (auto f : *he->GetFaces()) {
+
+	   std::vector<HE_Vertex*> vertices  = he->GetVerticesForFace(f);
+
+
+	   /*
+	    std::cout << "index 1 " << indexmap.at(vertices[0]->position) << std::endl;
+	   std::cout << "index 2 " << indexmap.at(vertices[1]->position) << std::endl;
+	   std::cout << "index 3 " << indexmap.at(vertices[2]->position) << std::endl;
+	   */
+	   vec3 edge1 = vertices[0]->position - vertices[1]->position;
+	   vec3 edge2 = vertices[0]->position - vertices[2]->position;
+	   vec3 n = cross(edge2, edge1);
+	   n.normalize();
+
+	   idx_type normal_idx = M.new_normal(n);
+		M.start_face();
+		for (auto it = indexmap.rbegin(); it != indexmap.rend(); ++it) {
+			if (it->first == vertices[0]->position)
+				M.new_corner(it->second, normal_idx);
+			if (it->first == vertices[1]->position)
+				M.new_corner(it->second, normal_idx);
+			if (it->first == vertices[2]->position)
+				M.new_corner(it->second, normal_idx);
+		}
+
+	}
+	M.compute_vertex_normals();
+	B = M.compute_box();
+	std::cout << "nr_face " << M.get_nr_faces() << std::endl;
+	std::cout << "nr_normal " << M.get_nr_normals() << std::endl;
+	std::cout << "nr_position " << M.get_nr_positions() << std::endl;
+	M.write("test.obj");
+	return true;
+
+}
 void vr_mesh_view::vertex_manipulate(HE_Vertex* vertex, vec3 pos, vec3 last_pos) {
 
 	if (he->changeVertexPos(vertex, vertex->position + pos - last_pos )) {

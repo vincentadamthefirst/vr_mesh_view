@@ -33,6 +33,7 @@ struct HE_Vertex {
 struct HE_Face {
 	/// one adjacent halfegde of the mesh, needed to find adjacent faces
 	HE_Edge* adjacent = nullptr;
+	vec3 normal = vec3(1, 0, 0);
 };
 
 class HE_Mesh
