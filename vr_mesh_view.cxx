@@ -386,6 +386,18 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				add_face_to_smoothingMesh(f2);
 				break;
 			}
+
+			case vr::VR_LEFT_BUTTON2:
+			{
+				if (!animationmode) {
+					//vertex deletion mode
+					std::cout << "Vertex Deletion activated" << std::endl;
+					vec3 origin, direction;
+					vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));	
+					vertex_deletion(origin, direction);
+				}
+				break;
+			}
 				
 			case vr::VR_LEFT_STICK_LEFT:
 			//case vr::VR_RIGHT_BUTTON1:
@@ -397,14 +409,6 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
 					tessellation(origin, direction);
 					std::cout << "Here IS Tessellation!" << std::endl;
-				}
-				else {
-					//vertex deletion mode
-					vec3 origin, direction;
-					rightButton1IsPressed = true;
-					vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
-					std::cout << "Vertex Deletion activated" << std::endl;
-					vertex_deletion(origin, direction);
 				}
 				break;
 			}
@@ -1960,5 +1964,3 @@ void vr_mesh_view::add_face_to_smoothingMesh(HE_Face* f) {
 #include <cgv/base/register.h>
 
 cgv::base::object_registration<vr_mesh_view> vr_test_reg("vr_mesh_view");
-
-
