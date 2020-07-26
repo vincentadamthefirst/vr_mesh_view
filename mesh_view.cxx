@@ -89,6 +89,9 @@ public:
 
 	HE_Mesh* he;
 
+	bool isVertexPicked = false;
+	HE_Vertex* intersectedVertex;
+
 	std::string scene_file_name;
 	std::string file_name;
 
@@ -205,81 +208,6 @@ public:
 		lb = 0.01f;
 		ub = 2.0f;
 		n = m = 20;
-
-		/*Some vertice points
-		vec3 v00(-0.0305058, 0.11267, 0.03556);
-		vec3 v01(-0.0285034, 0.115434, 0.0336947);
-		vec3 v02(0.0444779, 0.0960981, 0.0120995);
-
-		vec3 v10(-0.0295194, 0.112645, 0.0856748);
-		vec3 v11(-0.0274907, 0.115392, 0.0337641);
-		vec3 v12(0.0445738, 0.0960655, 0.011093);
-
-		vec3 v20(-0.0305528, 0.111285, 0.0367103);
-		vec3 v21(-0.0285135, 0.114011, 0.0349225);
-		vec3 v22(0.044851, 0.0946425, 0.0121241);
-
-		//Related eyes and intersected pos on the mesh
-		vec3 eye0(-0.0308552, 0.119768, 0.0477212);
-		vec3 eye1(-0.0308552, 0.119768, 0.0477212);
-		vec3 eye2(0.0563536, 0.0978362, 0.0132277);
-
-		vec3 pos0(-0.0302049, 0.112149, 0.0359373);
-		vec3 pos1(-0.0283122, 0.114939, 0.0340428);
-		vec3 pos2(0.0445649, 0.0956303, 0.0117814);
-		*/
-
-		//Ray Triangle Intersection Debug from line 225-272
-		//Triangle with vertices p0, p1, p2 is created
-		//7 different rays with 7 intersection points (all rays have the same origin(eye))
-
-		vec3 p0(-0.0672436, 0.136877, 0.202138);
-		vec3 p1(-0.075592, 0.128898, 0.198195);
-		vec3 p2(-0.0634377, 0.128783, 0.201072);
-
-		vec3 d0(-0.0681502, 0.143764, 0.202686);	// Far outside of the triangle
-		vec3 d1(-0.07226, 0.134041, 0.199666);		// Outside of the triangle
-		vec3 d2(-0.0686916, 0.12786, 0.198903);		// Outside of the triangle
-		vec3 d3(-0.0715118, 0.130307, 0.198878);	// Inside of the triangle
-		vec3 d4(-0.0665555, 0.132399, 0.200531);	// Inside of the triangle
-		vec3 d5(-0.0642378, 0.133841, 0.201418);	// Outside of the triangle
-		vec3 d6(-0.0661118, 0.136095, 0.201555);	// Slightly outside of the triangle
-
-		vec3 main_eye(-0.0692767, 0.130428, 0.246671);
-		ray_intersection::ray ray;
-		ray.origin = main_eye;
-
-		float t = 0.0f;
-		std::cout << "Is d0 inside triangle: " << ray_intersection::isInsideTriangle(p0, p1, p2, d0) << std::endl;
-		std::cout << "Is d1 inside triangle: " << ray_intersection::isInsideTriangle(p0, p1, p2, d1) << std::endl;
-		std::cout << "Is d2 inside triangle: " << ray_intersection::isInsideTriangle(p0, p1, p2, d2) << std::endl;
-		std::cout << "Is d3 inside triangle: " << ray_intersection::isInsideTriangle(p0, p1, p2, d3) << std::endl;
-		std::cout << "Is d4 inside triangle: " << ray_intersection::isInsideTriangle(p0, p1, p2, d4) << std::endl;
-		std::cout << "Is d5 inside triangle: " << ray_intersection::isInsideTriangle(p0, p1, p2, d5) << std::endl;
-		std::cout << "Is d6 inside triangle: " << ray_intersection::isInsideTriangle(p0, p1, p2, d6) << std::endl;
-
-		ray.direction = d0 - main_eye;
-		std::cout << "Is ray1 intersect triangle: " << ray_intersection::rayTriangleIntersect(ray, p0, p1, p2, t) << std::endl;
-		std::cout << "t: " << t << std::endl;
-		ray.direction = d1 - main_eye;
-		std::cout << "Is ray2 intersect triangle: " << ray_intersection::rayTriangleIntersect(ray, p0, p1, p2, t) << std::endl;
-		std::cout << "t: " << t << std::endl;
-		ray.direction = d2 - main_eye;
-		std::cout << "Is ray3 intersect triangle: " << ray_intersection::rayTriangleIntersect(ray, p0, p1, p2, t) << std::endl;
-		std::cout << "t: " << t << std::endl;
-		ray.direction = d3 - main_eye;
-		std::cout << "Is ray4 intersect triangle: " << ray_intersection::rayTriangleIntersect(ray, p0, p1, p2, t) << std::endl;
-		std::cout << "t: " << t << std::endl;
-		ray.direction = d4 - main_eye;
-		std::cout << "Is ray5 intersect triangle: " << ray_intersection::rayTriangleIntersect(ray, p0, p1, p2, t) << std::endl;
-		std::cout << "t: " << t << std::endl;
-		ray.direction = d5 - main_eye;
-		std::cout << "Is ray6 intersect triangle: " << ray_intersection::rayTriangleIntersect(ray, p0, p1, p2, t) << std::endl;
-		std::cout << "t: " << t << std::endl;
-		ray.direction = d6 - main_eye;
-		std::cout << "Is ray7 intersect triangle: " << ray_intersection::rayTriangleIntersect(ray, p0, p1, p2, t) << std::endl;
-		std::cout << "t: " << t << std::endl;
-		//Ray Triangle intersection Debug
 	}
 	std::string get_type_name() const
 	{
@@ -366,6 +294,21 @@ public:
 			he = generate_from_simple_mesh(M);
 			build_aabbtree_from_triangles(he, aabb_tree);
 			transformation_matrix.identity();
+
+			/*
+			updateSimpleMesh();
+			auto he_vertices = *he->GetVertices();
+			auto mesh_vertices = M.get_positions();
+			std::cout << size(he_vertices) << std::endl;
+			std::cout << size(mesh_vertices) << std::endl;
+			int i = 0;
+			while (i < size(he_vertices)) {
+				std::cout << he_vertices[i]<< std::endl;
+				std::cout << mesh_vertices[i] << std::endl;
+				i++;
+			}
+			*/
+			
 		}
 		sphere_style.radius = float(0.05 * sqrt(B.get_extent().sqr_length() / Vector_count));
 		on_set(&sphere_style.radius);
@@ -616,11 +559,6 @@ public:
 			switch (me.get_action()) {
 			case MA_PRESS:
 				if (me.get_button() == MB_LEFT_BUTTON && me.get_modifiers() == EM_CTRL) {
-					in_picking = true;
-					click_is_pick = true;
-					click_press_time = me.get_time();
-					click_button = me.get_button();
-
 					//Ray-Mesh Intersection Debug using HE_Mesh and HE_Face 
 					//By pressing CTRL and mouse left button at the same time, a ray is created and the ray's intersection with the mesh is debugged
 
@@ -632,66 +570,101 @@ public:
 					vec3 eye = view_ptr->get_eye();
 					vec3 direction = (pos - eye);
 
-					ray_intersection::ray mouse_ray;
-					mouse_ray.origin = eye;
-					mouse_ray.direction = direction;
+					ray_intersection::ray mouse_ray = ray_intersection::ray(eye, direction);
 
 					std::cout << "\nNew ray: " << std::endl;
 					std::cout << "eye: " << eye << std::endl;
 					std::cout << "direction: " << direction << std::endl;
 					float t = 0;
-					auto start = std::chrono::high_resolution_clock::now();
+					
+					//auto start = std::chrono::high_resolution_clock::now();
 					bool boxIntersection = ray_intersection::rayTreeIntersect(mouse_ray, aabb_tree, t);
-					auto stop = std::chrono::high_resolution_clock::now();
-					auto duration = std::chrono::duration<double>(stop - start);
-					std::cout << "Duration using aabb_tree/bounding box ray intersection: " << duration.count() << std::endl;
+					//auto stop = std::chrono::high_resolution_clock::now();
+					//auto duration = std::chrono::duration<double>(stop - start);
+					//std::cout << "Duration using aabb_tree/bounding box ray intersection: " << duration.count() << std::endl;
+					vec3 intersectionPoint = ray_intersection::getIntersectionPoint(mouse_ray, t);
 
 					std::cout << "boxIntersection: " << boxIntersection << std::endl;
 					std::cout << "Box Intersection t: " << t << std::endl;
-					std::cout << "Intersection point: " << ray_intersection::getIntersectionPoint(mouse_ray, t) << std::endl;
+					std::cout << "Intersection point: " << intersectionPoint << std::endl;
 
-					HE_Mesh* mesh = generate_from_simple_mesh(M);
-					if (mesh == nullptr)
-						std::cout << "Someting went wrong with the mesh generation: " << std::endl;
-					else {
-						std::cout << "NEW : " << std::endl;
-						std::cout << "Mesh is created" << std::endl;
-						float t = 0;
-						auto start2 = std::chrono::high_resolution_clock::now();
-						bool checker = ray_intersection::rayMeshIntersect(mouse_ray, mesh, t);
-						auto stop2 = std::chrono::high_resolution_clock::now();
-						auto duration2 = std::chrono::duration<double>(stop2 - start2);
-
-
-						if (checker) {
-							//push back origin point and intersection point into the list 
-							rgb c(1, 0, 0);
-							ray_list.push_back(mouse_ray.origin);
-							ray_list.push_back(ray_intersection::getIntersectionPoint(mouse_ray, t));
-							color_list.push_back(c);
-							color_list.push_back(c);
-
-							std::cout << "Regular Intersected t: " << t << std::endl;
-							std::cout << "Intersection point: " << ray_intersection::getIntersectionPoint(mouse_ray, t) << std::endl;
-							HE_Face* intersectedFace = ray_intersection::getIntersectedFace(mouse_ray, mesh);
-							vec3 p1, p2, p3;
-							mesh_utils::getVerticesOfFace(mesh, intersectedFace, p1, p2, p3);
-							std::cout << "Intersected face v0: " << p1 << std::endl;
-							std::cout << "Intersected face v1: " << p2 << std::endl;
-							std::cout << "Intersected face v2: " << p3 << std::endl;
-							delete intersectedFace;
-
-
+					std::vector<HE_Vertex*> vertices_of_face = he->GetVerticesForFace(ray_intersection::getIntersectedFace(mouse_ray, he));
+					//std::vector<HE_Vertex*> vertices_of_mesh = *he->GetVertices();
+					bool vertexIntersection = ray_intersection::vertexIntersection(intersectionPoint, vertices_of_face, intersectedVertex);
+					
+					if (vertexIntersection) {
+						//isVertexPicked = true;
+						std::cout << "Picked vertex: " << intersectedVertex << std::endl;
+						std::vector<HE_Vertex*> neighbor_vertices = he->GetNeighborVertices(intersectedVertex);
+						std::vector<HE_Face*> neighbor_faces = he->GetAdjacentFaces(intersectedVertex);
+						//neighbor_vertices.push_back(neighbor_vertices[0]);
+						
+						int i = 0;
+						for (auto n : neighbor_vertices) {
+							std::cout << "neighbor_vertices " << i << " data: " << n << std::endl;
+							i++;
 						}
-						else
-							std::cout << "No intersection with the mesh" << std::endl;
-						std::cout << "Duration using regular HE_Mesh-all triangles intersection: " << duration2.count() << std::endl;
-						delete mesh;
 
+						std::cout << "Number of halfEdges before deletion: " << (*he->GetHalfEdges()).size() << std::endl;
+						std::cout << "Number of faces before deletion: " << (*he->GetFaces()).size()<<std::endl;
+						for (int i = 0; i < neighbor_faces.size(); i++) {
+							he->deleteFace(neighbor_faces[i]);
+						}
+						std::cout << "Number of faces after deletion: " << (*he->GetFaces()).size() << std::endl;
+						std::cout << "Number of halfEdges after deletion: " << (*he->GetHalfEdges()).size() << std::endl;
+
+						std::cout << "Number of vertices before deletion: " <<(*he->GetVertices()).size()<< std::endl;
+						he->deleteVector(intersectedVertex);
+						std::cout << "Number of vertices after deletion: " << (*he->GetVertices()).size() << std::endl;
+
+						//HE_Vertex* temp = nullptr;
+						std::cout << "Number of halfEdges before addition: " << (*he->GetHalfEdges()).size() << std::endl;
+						for (int i = 0; i < neighbor_vertices.size() - 2; i++) {
+							auto face = he->AddFace();
+
+							auto newHalfEdge = he->AddHalfEdge(neighbor_vertices[0], neighbor_vertices[i+2], face);
+							auto newHalfEdge2 = he->AddHalfEdge(neighbor_vertices[i+1], neighbor_vertices[0], face, newHalfEdge);
+							auto newHalfEdge3 = he->AddHalfEdge(neighbor_vertices[i + 2], neighbor_vertices[i+1], face, newHalfEdge2);
+							newHalfEdge->next = newHalfEdge3;
+							auto newHalfEdge4 = he->AddHalfEdge(neighbor_vertices[i+2], neighbor_vertices[0], face);
+							auto newHalfEdge5 = he->AddHalfEdge(neighbor_vertices[i + 1], neighbor_vertices[i+2], face, newHalfEdge4);
+							auto newHalfEdge6 = he->AddHalfEdge(neighbor_vertices[0], neighbor_vertices[i + 1], face, newHalfEdge5);
+							newHalfEdge4->next = newHalfEdge6;
+						}
+						std::cout << "Number of halfEdges after addition: " << (*he->GetHalfEdges()).size() << std::endl;
+
+						build_simple_mesh_from_HE();
+						build_aabbtree_from_triangles(he, aabb_tree);
+						post_redraw();
 					}
+						
 
+						/*
+						std::cout << "Vertex Intersection: " << vertexIntersection << " intersection vertex position: " << intersectedVertex->position << std::endl;
+						std::cout << "intersectionVertex->originalIndex: " << intersectionVertex->position << std::endl;
+						std::cout << "vertex from GetVertices: " << vertices_of_mesh[intersectionVertex->originalIndex]->position << std::endl;
+						std::cout << "vertex from getVerticesForFace0: " << vertices_of_face[0]->position << std::endl;
+						std::cout << "vertex from getVerticesForFace1: " << vertices_of_face[1]->position << std::endl;
+						std::cout << "vertex from getVerticesForFace2: " << vertices_of_face[2]->position << std::endl;
+						std::cout << "pos of mesh: " << M.position(intersectionVertex->originalIndex) << std::endl;
+						*/
+					/*
+						if (he->changeVertexPos(intersectedVertex, newPos*2)) {
+							std::cout << "m pos before: " << M.position(intersectedVertex->originalIndex) << std::endl;
+							M.position(intersectedVertex->originalIndex) = newPos * 2;
+							std::cout << "m pos after: " << M.position(intersectedVertex->originalIndex) << std::endl;
+							M.compute_vertex_normals();
+							B = M.compute_box();
+							have_new_mesh = true;
+							post_redraw();
+							build_aabbtree_from_triangles(he, aabb_tree);
+						}
+					*/
+					
+					
 					//END OF DEBUG
 
+					/*
 					if (on_pick(me))
 						click_is_pick = false;
 					if (pick_point_index != -1) {
@@ -700,6 +673,7 @@ public:
 							update_member(&pick_colors[pick_point_index]);
 					}
 					post_redraw();
+					*/
 					return true;
 				}
 				click_is_pick = false;
@@ -721,12 +695,33 @@ public:
 					in_picking = false;
 					return true;
 				}
+
+				if (isVertexPicked) {
+					M.compute_vertex_normals();
+					B = M.compute_box();
+					have_new_mesh = true;
+					post_redraw();
+					build_aabbtree_from_triangles(he, aabb_tree);
+				}
+				isVertexPicked = false;
 				break;
 			case MA_DRAG:
-				if (in_picking) {
-					on_drag(me);
-					click_is_pick = false;
-					return true;
+				if (isVertexPicked) {
+					unsigned x = me.get_x();
+					unsigned y = me.get_y();
+					vec3 pos(0.0f);
+					view_ptr->get_z_and_unproject(*ctx, x, y, pos);
+
+					vec3 eye = view_ptr->get_eye();
+					vec3 direction = (pos - eye);
+
+					ray_intersection::ray mouse_ray = ray_intersection::ray(eye, direction);
+					float t = 0;
+
+					if (ray_intersection::rayTreeIntersect(mouse_ray, aabb_tree, t)) {
+						vec3 intersectionPoint = ray_intersection::getIntersectionPoint(mouse_ray, t);
+						vertex_manipulate(intersectedVertex, intersectionPoint - intersectedVertex->position);
+					}
 				}
 				break;
 			}
@@ -1356,29 +1351,6 @@ public:
 
 		return newMesh;
 	}
-	/*
-void render_ray() {
-	cgv::render::context* ctx = get_context();
-	vec3 ray_orgin{ 0, 0, 0 };
-	vec3 ray_intersection{ 2,2,2 };
-	std::vector<vec3> p;
-	std::vector<rgb> color;
-	p.push_back(ray_orgin);
-	p.push_back(ray_intersection);
-	rgb c(1, 0, 0);
-	color.push_back(c);
-	color.push_back(c);
-	normal_renderer line_renderer;
-	line_renderer.init(*ctx);
-	line_renderer.set_position_array(*ctx, p);
-	line_renderer.set_color_array(*ctx, color);
-	if (line_renderer.validate_and_enable(*ctx)) {
-		//line_renderer.enable(*ctx);
-		glDrawArrays(GL_LINES, 0, (GLsizei)p.size());
-		line_renderer.disable(*ctx);
-	}
-
-}*/
 
 	void debug_render_ray(context& ctx) {
 
@@ -1462,7 +1434,7 @@ void render_ray() {
 		point_path.push_back(v11);*/
 	}
 
-	// animation of the mesh ... its not viewable here because the vie is alway centered to the mesh
+	// animation of the mesh ... its not viewable here because the view is always centered to the mesh
 	void animate() {
 
 
@@ -1526,6 +1498,7 @@ void render_ray() {
 	}
 
 	// returns pos in the local coordinate system
+	
 	vec3 global_to_local(vec3 pos) {
 		mat4 inverse_m = inv(transformation_matrix);
 		std::cout << "transformation_matrix " << transformation_matrix << std::endl;
@@ -1537,43 +1510,219 @@ void render_ray() {
 		new_pos = inverse_m * pos_vec4;
 		return vec3(new_pos[0], new_pos[1], new_pos[2]);
 	}
+	
+
+	/*
+	vec3 global_to_local(vec3 pos) {
+		pos = transpose(mesh_rotation_matrix) * (pos - mesh_translation_vector);
+		return pos;
+	}
+
+	// returns pos in the local coordinate system
+	vec3 local_to_global(vec3 pos) {
+		pos = (mesh_rotation_matrix * pos) + mesh_translation_vector;
+		return pos;
+	}
+	*/
 
 	//use inverse translation mat4 to calculate the view position in local coordinate
 	//return loacl viewposition
-	/*vec3 view_translation(vec3 view_position, std::vector<vec3> point_path) {
 
-		vec4 viewposition, new_view;
-		viewposition = vec4(view_position, 1.0);
-		mesh_view::fill_animationpath(point_path);
-		int i = point_path.size();
-		mat4 mat_translation, inv_translation;
-		mat_translation.identity();
-		vec3 v = point_path[i - 1] - point_path[0];
-		//mesh_utils::shiftPositions(he, v);
-		mat_translation.set_col(3, vec4(v, 1));
+	//updates Simple mesh from HE_Mesh
+	void mesh_view::updateSimpleMesh() {
+		auto originalPositions = M.get_positions();
 
-		inv_translation = inv(mat_translation);
-		for (int j = 0; j < 4; j++)
-		{
-			float sum = 0;
-			for (int k = 0; k < 4; k++)
-			{
-				sum += inv_translation(j, k) * viewposition[k];
+		for (auto v : *he->GetVertices()) {
+			//std::cout << M.position(v->originalIndex) << ", " << v->position << std::endl;;
+			M.position(v->originalIndex) = v->position;
+		}
+		M.compute_vertex_normals();
+		B = M.compute_box();
+		have_new_mesh = true;
+		post_redraw();
+	}
+	bool mesh_view::build_simple_mesh_from_HE() {
+
+		int number = M.get_nr_normals();
+
+		/*std::vector<vec3> old_normals(number);
+		for(int i = 0; i < number; i++)
+			old_normals[i] = M.normal(number);*/
+
+		M.clear();
+		std::map<vec3, int> indexmap;
+		std::map<int, HE_Vertex> vertexxmap;
+		std::map<vec3, int>::iterator it;
+		int i = 0;
+		for (auto v : *he->GetVertices()) {
+
+			vec3 pos = v->position;
+
+			idx_type tes_pos_idx = M.new_position(pos);
+			//std::cout << "tes_pos_idx " << tes_pos_idx << std::endl;
+			indexmap.insert(std::make_pair(pos, tes_pos_idx));
+			/*it = indexmap.find(i);
+			if (it != indexmap.end())
+				std::cout << "find was succesful" << std::endl;
+			else
+				std::cout << "find was not succesful" << std::endl;*/
+				//std::cout << "indexmap at pos " << indexmap.find(tes_pos_idx)->first << " " << indexmap.find(tes_pos_idx)->second  << std::endl;
+				//i++;
+		}
+		/*for (auto it = indexmap.rbegin(); it != indexmap.rend(); ++it)
+			std::cout << it->first << " " << it->second << std::endl;
+
+		std::cout << "indexmap " << indexmap.size() << std::endl;*/
+
+
+		for (auto f : *he->GetFaces()) {
+
+			std::vector<HE_Vertex*> vertices = he->GetVerticesForFace(f);
+
+
+			/*
+			 std::cout << "index 1 " << indexmap.at(vertices[0]->position) << std::endl;
+			std::cout << "index 2 " << indexmap.at(vertices[1]->position) << std::endl;
+			std::cout << "index 3 " << indexmap.at(vertices[2]->position) << std::endl;
+			*/
+			vec3 edge1 = vertices[0]->position - vertices[1]->position;
+			vec3 edge2 = vertices[0]->position - vertices[2]->position;
+			vec3 n = cross(edge2, edge1);
+			n.normalize();
+
+			idx_type normal_idx = M.new_normal(n);
+			M.start_face();
+			for (auto it = indexmap.rbegin(); it != indexmap.rend(); ++it) {
+				if (it->first == vertices[0]->position)
+					M.new_corner(it->second, normal_idx);
+				if (it->first == vertices[1]->position)
+					M.new_corner(it->second, normal_idx);
+				if (it->first == vertices[2]->position)
+					M.new_corner(it->second, normal_idx);
 			}
-			new_view[j] = sum;
+
+		}
+		M.compute_vertex_normals();
+		B = M.compute_box();
+		std::cout << "nr_face " << M.get_nr_faces() << std::endl;
+		std::cout << "nr_normal " << M.get_nr_normals() << std::endl;
+		std::cout << "nr_position " << M.get_nr_positions() << std::endl;
+		M.write("test.obj");
+		return true;
+
+	}
+
+	void vertex_manipulate(HE_Vertex* vertex, vec3 pos_change) {
+
+		if (he->changeVertexPos(vertex, vertex->position + pos_change)) {
+			M.position(vertex->originalIndex) = M.position(vertex->originalIndex) + pos_change;
+			post_redraw();
+		}
+		else
+			std::cout << "Vertex position couldn't be manipulated." << std::endl;
+	}
+
+	/*
+	void delete_vertex(const vec3& origin, const vec3& direction)
+	{
+		//global to local
+		//vec3 new_origin = global_to_local(origin);
+		//vec3 point_on_ray = origin + direction;
+		//vec3 new_point_on_ray = global_to_local(point_on_ray);
+		//vec3 new_dir = new_point_on_ray - new_origin;
+
+		// create ray
+		ray_intersection::ray vertex_ray = ray_intersection::ray(origin, direction);
+		float t = 0.0;
+
+		if (ray_intersection::rayTreeIntersect(vertex_ray, aabb_tree, t)) {
+			//vr_mesh_view::nr_tes_intersection++;
+			vec3 local_intersection_point = ray_intersection::getIntersectionPoint(vertex_ray, t);
+			HE_Face* face;
+			bool f = ray_intersection::getIntersectedFace_with_t(vertex_ray, he, t, face);
+			std::vector<HE_Vertex*> vertices_of_face = he->GetVerticesForFace(face);
+			if (ray_intersection::vertexIntersection(local_intersection_point, vertices_of_face, intersectedVertex)) {
+
 			}
-		viewposition = new_view;
+			HE_Face* tes_face = ray_intersection::getIntersectedFace(tes_ray, he);
+			//vec3 p1, p2, p3;
+			//mesh_utils::getVerticesOfFace(he, tes_face, p1, p2, p3);
 
-		vec3 view;
-		view[0] = viewposition[0];
-		view[1] = viewposition[1];
-		view[2] = viewposition[2];
-		return view;
-	}*/
+			auto tes_point = he->GetVerticesForFace(tes_face); //three vertices in the tes_face
+			// add three faces to the original half edge mesh
+			for (int i = 0; i < 3; i++) {
+				unsigned int vectorAIndex = tes_point[i]->originalIndex;
+				unsigned int vectorBIndex = tes_point[(i + 1) % 3]->originalIndex;
+				unsigned int vectorCIndex = M.get_nr_positions() + nr_tes_intersection;
 
+				// adding the 3 vectors
+				auto vectorA = he->AddVector(vectorAIndex, tes_point[i]->position);
+				auto vectorB = he->AddVector(vectorBIndex, tes_point[(i + 1) % 3]->position);
+				auto vectorC = he->AddVector(vectorCIndex, tes_inter_point);
 
+				auto face = he->AddFace();
 
+				// generating 3 half edges per triangle
+				auto halfEdgeC = he->AddHalfEdge(vectorC, vectorA, face);
+				auto halfEdgeB = he->AddHalfEdge(vectorB, vectorC, face, halfEdgeC);
+				auto halfEdgeA = he->AddHalfEdge(vectorA, vectorB, face, halfEdgeB);
 
+				// closing the loop
+				halfEdgeC->next = halfEdgeA;
+			}
+			//create a new normal 
+			idx_type normal_idx = M.new_normal(vec3(0.0f, -1.0f, 0.0f));
+			//create a global point vector
+			vec4 trans_point = vec4(0);
+			//transform the intersected point from local to global system
+			trans_point = transformation_matrix * vec4(tes_inter_point, 1.0);
+			//create a new position in the simple mesh M
+			idx_type tes_pos_idx = M.new_position(vec3(trans_point[0], trans_point[1], trans_point[2]));
+			// add new faces to simple mesh
+			for (int i = 0; i < 3; i++) {
+				//create a new face
+				M.start_face();
+				// tell the mesh to save a new corner (vertex) with the position and normal given as indices
+				M.new_corner(tes_pos_idx, normal_idx);
+
+				idx_type pos_idx;
+				pos_idx = tes_point[i]->originalIndex;
+				//create the second corner for each face
+				M.new_corner(pos_idx, normal_idx);
+
+				// create the last corner
+				pos_idx = tes_point[(i + 1) % 3]->originalIndex;
+				M.new_corner(pos_idx, normal_idx);
+
+			}
+			//output some useful information
+			/*
+			std::cout << tes_inter_point << std::endl;
+
+			std::cout << "normal :" << M.normal(tes_point[0]->originalIndex) << std::endl;
+			std::cout << "normal :" << M.normal(tes_point[1]->originalIndex) << std::endl;
+			std::cout << "normal :" << M.normal(tes_point[2]->originalIndex) << std::endl;
+			std::cout << "nr_face " << M.get_nr_faces() << std::endl;
+			std::cout << "nr_normal " << M.get_nr_normals() << std::endl;
+			std::cout << "nr_position " << M.get_nr_positions() << std::endl;
+			std::cout << "begin_corner 0 " << M.begin_corner(0) << std::endl;
+			std::cout << "end_corner 0 " << M.end_corner(0) << std::endl;
+			std::cout << "begin_corner 11 " << M.begin_corner(11) << std::endl;
+			std::cout << "end_corner 11" << M.end_corner(11) << std::endl;
+			*/
+	/*
+			//compute the normals again
+			M.compute_vertex_normals();
+			B = M.compute_box();
+			have_new_mesh = true;
+			post_redraw();
+			build_aabbtree_from_triangles(he, aabb_tree);
+		}
+		else {
+			std::cout << "No intersection" << std::endl;
+		}
+	}
+	*/
 };
 
 #include <cgv/base/register.h>
