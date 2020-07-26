@@ -43,7 +43,7 @@ HE_Edge* HE_Mesh::AddHalfEdge(HE_Vertex* origin, HE_Vertex* dest, HE_Face* face,
 		newHalfEdge->twin = possibleTwin->second;
 		possibleTwin->second->twin = newHalfEdge;
 	}
- 
+	origin->outgoing = newHalfEdge;
 	halfEdges.push_back(newHalfEdge);
 	originalEdges.insert(std::make_pair(CantorPairing(origin->originalIndex, dest->originalIndex), newHalfEdge));
 	return newHalfEdge;
@@ -65,7 +65,24 @@ std::vector<HE_Face*> HE_Mesh::GetAdjacentFaces(HE_Face* face) {
 	return toReturn;
 }
 
+std::vector<HE_Face*> HE_Mesh::GetAdjacentFaces(HE_Vertex* vertex) {
+	std::vector<HE_Face*> toReturn;
+	for (auto face : faces) {
+		std::vector<HE_Vertex*> vertices_of_face = GetVerticesForFace(face);
+		for (int i = 0; i < 3; i++) {
+			if (vertex == vertices_of_face[i]) {
+				toReturn.push_back(face);
+				break;
+			}	
+		}
+	}
+
+	return toReturn;
+}
+
 HE_Face* HE_Mesh::AddBoundary(HE_Edge* edge) {
+	HE_Vertex* v = edge->origin;
+	boundaryVertices.push_back(v);
 	HE_Face* f = edge->face;
 	// f is not a element of boundaryFaces
 	if (std::find(boundaryFaces.begin(), boundaryFaces.end(), f) == boundaryFaces.end())
@@ -82,3 +99,164 @@ std::vector<HE_Vertex*> HE_Mesh::GetVerticesForFace(HE_Face* face) {
 
 	return toReturn;
 }
+
+
+
+std::vector<HE_Vertex*> HE_Mesh::GetNeighborVertices(HE_Vertex* vertex) {
+	bool loopReverse = false;
+	std::vector<HE_Vertex*> toReturn;
+	HE_Edge* e1 = vertex->outgoing;
+	auto e2 = e1->twin;
+	//boundary
+	if (e2 == nullptr) {
+		// loop in andere Richtung#
+		loopReverse = true;
+	}
+
+	int i = 0;
+	//normal loop
+	if (!loopReverse) {
+		HE_Edge* start = e2;
+		do {
+			toReturn.push_back(e2->origin);
+			auto e2_temp = e2->next->twin;
+			//boundary
+			if (e2_temp == nullptr) {
+				// loop in andere Richtung
+				toReturn.push_back(e2->next->next->origin);
+				loopReverse = true;
+				break;
+			}
+			else {
+				e2 = e2_temp;
+			}
+			//std::cout << i++ << std::endl;
+		} while (e2 != start);
+	}
+
+	//loop reverse, used if there is a boundary 
+	if (loopReverse) {
+		e2 = e1->next->next;
+		while (true) {
+			toReturn.push_back(e2->origin);
+			if (e2->twin == nullptr)
+				break;
+			e2 = e2->twin->next->next;
+			//std::cout << i++ << std::endl;
+		}
+
+	}
+	return toReturn;
+}
+
+//Why vertices of he_mesh and simple mesh do not have the same originalIndex values pointing for the same vertex position? 
+//They are not compatible with each other
+//Therefore this more efficient version does not work
+/*
+bool HE_Mesh::changeVertexPos(HE_Vertex* vertex, vec3 new_pos) {
+	if (vertex == vertices[vertex->originalIndex]) {
+		//std::cout << "Vertex "<< vertices[vertex->originalIndex]->originalIndex <<" with position "<< vertices[vertex->originalIndex]->position << " changed to "<< vertex << " with position "<< vertex->position <<std::endl;
+		vertices[vertex->originalIndex]->position = new_pos;
+		return true;
+	}
+	return false;
+}
+*/
+
+bool HE_Mesh::changeVertexPos(HE_Vertex* vertex, vec3 new_pos) {
+
+	for (auto v : vertices) {
+		if (v->position == vertex->position) {
+			//std::cout << "Vertex " << v->originalIndex << " with position " << v->position << " changed to " << "vertex intersection point" << " with position " << new_pos << std::endl;
+			v->position = new_pos;
+			return true;
+		}
+	}
+	return false;
+}
+
+bool HE_Mesh::deleteFace(HE_Face* f) {
+	//deleting face and half edges  // new connections for vertices and twin HE  still missing
+	auto it = std::find(faces.begin(), faces.end(), f);
+	if (it == faces.end())
+		return false;
+	//half edge
+	auto e = f->adjacent;
+	//he
+	auto e2 = e->next;
+	//he
+	auto e3 = e2->next;
+
+	auto it_e = std::find(halfEdges.begin(), halfEdges.end(), e);
+	if (it_e != halfEdges.end())
+		halfEdges.erase(it_e);
+	auto it_e2 = std::find(halfEdges.begin(), halfEdges.end(), e2);
+	if (it_e2 != halfEdges.end())
+		halfEdges.erase(it_e2);
+	auto it_e3 = std::find(halfEdges.begin(), halfEdges.end(), e3);
+	if (it_e3 != halfEdges.end())
+		halfEdges.erase(it_e3);
+
+	//find 3 edges in the originalEdges and delete them
+	auto original_e = originalEdges.find(CantorPairing(e->origin->originalIndex, e2->origin->originalIndex));
+	if (original_e != originalEdges.end())
+		originalEdges.erase(original_e);
+	auto original_e2 = originalEdges.find(CantorPairing(e2->origin->originalIndex, e3->origin->originalIndex));
+	if (original_e2 != originalEdges.end())
+		originalEdges.erase(original_e2);
+	auto original_e3 = originalEdges.find(CantorPairing(e3->origin->originalIndex, e->origin->originalIndex));
+	if (original_e3 != originalEdges.end())
+		originalEdges.erase(original_e3);
+
+	faces.erase(it);
+	return true;
+}
+
+bool HE_Mesh::deleteVector(HE_Vertex* vertex) {
+	auto v = std::find(vertices.begin(), vertices.end(), vertex);
+	if (v == vertices.end())
+		return false;
+
+	auto del_vertex = std::find(vertices.begin(), vertices.end(), vertex);
+	if (del_vertex != vertices.end()) {
+		std::cout << "vertices deleted." << std::endl;
+		vertices.erase(del_vertex);
+	}
+	auto del_originalVertex = originalVectorIndices.find(vertex->originalIndex);
+	if (del_originalVertex != originalVectorIndices.end()) {
+		originalVectorIndices.erase(del_originalVertex);
+		std::cout << "originalVectorIndices deleted." << std::endl;
+	}
+	vertex->originalIndex = NULL;
+	vertex->position = NULL;
+
+	try {
+		delete vertex;
+	}
+	catch (std::exception& e) { std::cout << e.what() << std::endl; }
+
+	return true;
+}
+
+void HE_Mesh::showAllInfo(HE_Mesh* he)
+{
+	//show some informatin to compare the faces and edges before and after deletion
+	std::vector<HE_Face*>* face_ = he->GetFaces();
+	int i = 0;
+
+	for (auto face : *face_) {
+		std::cout << "Face: " << i << std::endl;
+		vec3 v_0 = he->GetVerticesForFace(face).at(0)->position;
+		vec3 v_1 = he->GetVerticesForFace(face).at(1)->position;
+		vec3 v_2 = he->GetVerticesForFace(face).at(2)->position;
+		std::cout << v_0 << " " << std::endl << v_1 << " " << std::endl << v_2 << std::endl;
+		i++;
+	}
+
+	std::cout << "ORIGINAL EDGES" << originalEdges.size() << std::endl;
+	std::cout << "halfedges" << halfEdges.size() << std::endl;
+
+}
+
+
+
