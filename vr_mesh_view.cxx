@@ -398,6 +398,14 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					tessellation(origin, direction);
 					std::cout << "Here IS Tessellation!" << std::endl;
 				}
+				else {
+					//vertex deletion mode
+					vec3 origin, direction;
+					rightButton1IsPressed = true;
+					vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
+					std::cout << "Vertex Deletion activated" << std::endl;
+					vertex_deletion(origin, direction);
+				}
 				break;
 			}
 				
@@ -1748,6 +1756,85 @@ void vr_mesh_view::tessellation(const vec3& origin, const vec3& direction) {
 		std::cout << "No intersection" << std::endl;
 	}
 }
+
+void vr_mesh_view::vertex_deletion(const vec3& origin, const vec3& direction) {
+
+	ray_intersection::ray ray = ray_intersection::ray(origin, direction);
+	float t = 0;
+
+	//auto start = std::chrono::high_resolution_clock::now();
+	//bool boxIntersection = ray_intersection::rayTreeIntersect(ray, aabb_tree, t);
+	//auto stop = std::chrono::high_resolution_clock::now();
+	//auto duration = std::chrono::duration<double>(stop - start);
+	//std::cout << "Duration using aabb_tree/bounding box ray intersection: " << duration.count() << std::endl;
+	vec3 intersectionPoint = ray_intersection::getIntersectionPoint(ray, t);
+
+	//std::cout << "boxIntersection: " << boxIntersection << std::endl;
+	//std::cout << "Box Intersection t: " << t << std::endl;
+	//std::cout << "Intersection point: " << intersectionPoint << std::endl;
+
+	std::vector<HE_Vertex*> vertices_of_face = he->GetVerticesForFace(ray_intersection::getIntersectedFace(ray, he));
+	//std::vector<HE_Vertex*> vertices_of_mesh = *he->GetVertices();
+	bool vertexIntersection = ray_intersection::vertexIntersection(intersectionPoint, vertices_of_face, intersectedVertex);
+
+	if (vertexIntersection) {
+		std::cout << "Picked vertex: " << intersectedVertex <<" with position: "<<intersectedVertex->position << std::endl;
+		std::vector<HE_Vertex*> neighbor_vertices = he->GetNeighborVertices(intersectedVertex);
+		std::vector<HE_Face*> neighbor_faces = he->GetAdjacentFaces(intersectedVertex);
+		//neighbor_vertices.push_back(neighbor_vertices[0]);
+
+		//Neighbor vertices
+		/*
+		int i = 0;
+		for (auto n : neighbor_vertices) {
+			std::cout << "neighbor_vertices " << i << " data: " << n << std::endl;
+			i++;
+		}
+		*/
+
+		//std::cout << "Number of halfEdges before deletion: " << (*he->GetHalfEdges()).size() << std::endl;
+		//std::cout << "Number of faces before deletion: " << (*he->GetFaces()).size() << std::endl;
+		for (int i = 0; i < neighbor_faces.size(); i++) {
+			he->deleteFace(neighbor_faces[i]);
+		}
+		//std::cout << "Number of faces after deletion: " << (*he->GetFaces()).size() << std::endl;
+		//std::cout << "Number of halfEdges after deletion: " << (*he->GetHalfEdges()).size() << std::endl;
+
+		//std::cout << "Number of vertices before deletion: " << (*he->GetVertices()).size() << std::endl;
+		he->deleteVector(intersectedVertex);
+		//std::cout << "Number of vertices after deletion: " << (*he->GetVertices()).size() << std::endl;
+
+		//std::cout << "Number of halfEdges before addition: " << (*he->GetHalfEdges()).size() << std::endl;
+
+		//This for loop creates suitable triangle faces and adds all the missing halfedges 
+		for (int i = 0; i < neighbor_vertices.size() - 2; i++) {
+			auto face = he->AddFace();
+
+			//HalfEdge possible direction 1
+			auto newHalfEdge = he->AddHalfEdge(neighbor_vertices[0], neighbor_vertices[i + 2], face);
+			auto newHalfEdge2 = he->AddHalfEdge(neighbor_vertices[i + 1], neighbor_vertices[0], face, newHalfEdge);
+			auto newHalfEdge3 = he->AddHalfEdge(neighbor_vertices[i + 2], neighbor_vertices[i + 1], face, newHalfEdge2);
+			newHalfEdge->next = newHalfEdge3;
+			
+			//HalfEdge possible direction 2
+			auto newHalfEdge4 = he->AddHalfEdge(neighbor_vertices[i + 2], neighbor_vertices[0], face);
+			auto newHalfEdge5 = he->AddHalfEdge(neighbor_vertices[i + 1], neighbor_vertices[i + 2], face, newHalfEdge4);
+			auto newHalfEdge6 = he->AddHalfEdge(neighbor_vertices[0], neighbor_vertices[i + 1], face, newHalfEdge5);
+			newHalfEdge4->next = newHalfEdge6;
+		}
+		//std::cout << "Number of halfEdges after addition: " << (*he->GetHalfEdges()).size() << std::endl;
+
+		//Building the simple mesh takes a lot of time, around 4-5 seconds
+		build_simple_mesh_from_HE();
+
+		build_aabbtree_from_triangles(he, aabb_tree);
+		post_redraw();
+		std::cout << "Vertex deleted!" << std::endl;
+	}
+	else
+		std::cout << "No vertex intersection, vertex deletion couldn't be operated." << std::endl;
+}
+
 bool vr_mesh_view::build_simple_mesh_from_HE() {
 
 	int number = M.get_nr_normals();
