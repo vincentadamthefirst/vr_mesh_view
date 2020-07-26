@@ -13,6 +13,8 @@ namespace ray_intersection {
 	struct ray {
 		vec3 origin;
 		vec3 direction;
+
+		ray(vec3 org, vec3 dir) : origin(org), direction(dir) {};
 	};
 	bool isInsideTriangle(const vec3& v0, const vec3& v1, const vec3& v2, const vec3& p)
 	{
@@ -23,7 +25,7 @@ namespace ray_intersection {
 		vec3 C1 = p - v1;
 		vec3 C2 = p - v2;
 		vec3 N = cross(edge0, edge1);
-		if (dot(N,cross(edge0,C0)) > 0 &&
+		if (dot(N, cross(edge0, C0)) > 0 &&
 			dot(N, cross(edge1, C1)) > 0 &&
 			dot(N, cross(edge2, C2)) > 0) return true; // P is inside the triangle 
 		return false;
@@ -35,6 +37,7 @@ namespace ray_intersection {
 		vec3 o = r.origin;
 		vec3 e1 = v1 - v0;
 		vec3 e2 = v2 - v0;
+
 		vec3 p = cross(d, e2);
 		float a = dot(e1, p);
 
@@ -55,10 +58,10 @@ namespace ray_intersection {
 			return false;
 
 		t = f * dot(e2, q);
-
 		return (t >= 0);
+
 	}
-	
+
 	bool rayFaceIntersect(ray& r, HE_Mesh* mesh, HE_Face* face, float& t)
 	{
 		vec3 v0, v1, v2;
@@ -66,10 +69,10 @@ namespace ray_intersection {
 		if (rayTriangleIntersect(r, v0, v1, v2, t)) {
 			return true;
 		}
-			
+
 		return false;
 	}
-	
+
 	bool rayMeshIntersect(ray& r, HE_Mesh* mesh, float& t)
 	{
 		vec3 v0, v1, v2;
@@ -84,7 +87,7 @@ namespace ray_intersection {
 					temp_t = t;
 			}
 		}
-		
+
 		if (!intersect)
 			return false;
 		else {
@@ -96,7 +99,43 @@ namespace ray_intersection {
 	{
 		vec3 v0, v1, v2;
 		bool intersect = false;
-		float temp_t = 1000000;
+		float temp_t = std::numeric_limits<float>::max();//1000000;
+		float t = 0;
+
+		HE_Face* temp_face = new HE_Face();
+		int i = 0;
+		for (auto face : *mesh->GetFaces()) {
+
+			if (rayFaceIntersect(r, mesh, face, t))
+			{
+				i++;
+				//std::cout << "face" << i << std::endl;
+				intersect = true;
+				//std::cout << "t: " << t << std::endl;
+				//std::cout << "temp_t: " << temp_t << std::endl;
+				if (t < temp_t) {
+					temp_t = t;
+					temp_face = face;
+				}
+				//std::cout << "updated temp_t: " << temp_t << std::endl;
+			}
+			//else
+				//std::cout << "face is not intersecting" << std::endl;
+
+
+		}
+		if (intersect)
+			return temp_face;
+		else {
+			return temp_face;
+		}
+	}
+
+	bool getIntersectedFace_with_t(ray& r, HE_Mesh* mesh, float& main_t, HE_Face*& f)
+	{
+		vec3 v0, v1, v2;
+		bool intersect = false;
+		float temp_t = std::numeric_limits<float>::max();;
 		float t = 0;
 
 		HE_Face* temp_face = new HE_Face();
@@ -108,17 +147,19 @@ namespace ray_intersection {
 				if (t < temp_t) {
 					temp_t = t;
 					temp_face = face;
-				}		
+				}
 			}
 		}
-		if (intersect)
-			return temp_face;
+		if (intersect) {
+			main_t = temp_t;
+			f = temp_face;
+			return true;
+		}
 		else {
-			std::cout << "No intersection, returning face object anyway" << std::endl;
-				return temp_face;
+			return false;
 		}
 	}
-	
+
 	bool rayBoxIntersect(const ray& r, const box3& b)
 	{
 		vec3 max_pnt = b.get_max_pnt();
@@ -129,12 +170,12 @@ namespace ray_intersection {
 		float tmin = (min_pnt.x() - orig.x()) / dir.x();
 		float tmax = (max_pnt.x() - orig.x()) / dir.x();
 
-		if (tmin > tmax) {float temp = tmin;tmin = tmax;tmax = temp;}
+		if (tmin > tmax) { float temp = tmin; tmin = tmax; tmax = temp; }
 
 		float tymin = (min_pnt.y() - orig.y()) / dir.y();
 		float tymax = (max_pnt.y() - orig.y()) / dir.y();
 
-		if (tymin > tymax) {float temp = tymin;tymin = tymax;tymax = temp;}
+		if (tymin > tymax) { float temp = tymin; tymin = tymax; tymax = temp; }
 
 		if ((tmin > tymax) || (tymin > tmax))
 			return false;
@@ -148,7 +189,7 @@ namespace ray_intersection {
 		float tzmin = (min_pnt.z() - orig.z()) / dir.z();
 		float tzmax = (max_pnt.z() - orig.z()) / dir.z();
 
-		if (tzmin > tzmax) {float temp = tzmin; tzmin = tzmax; tzmax = temp;}
+		if (tzmin > tzmax) { float temp = tzmin; tzmin = tzmax; tzmax = temp; }
 
 		if ((tmin > tzmax) || (tzmin > tmax))
 			return false;
@@ -162,7 +203,7 @@ namespace ray_intersection {
 		return true;
 	}
 
-	
+
 	void rayNodeIntersect(const ray& r, AabbTree<triangle>::AabbNode* node, float& t)
 	{
 		box3 box = node->get_box();
@@ -173,10 +214,9 @@ namespace ray_intersection {
 				std::vector<vec3> triangle = node->get_triangle();
 				if (rayTriangleIntersect(r, triangle.at(0), triangle.at(1), triangle.at(2), temp2))
 					if (temp2 != 0)
-						if (temp == 0 || temp2 < temp){
-							std::cout << "Changed from: " << temp << " to " << temp2 << std::endl;
+						if (temp == 0 || temp2 < temp) {
 							temp = temp2;
-						}	
+						}
 			}
 			else {
 				rayNodeIntersect(r, node->left_child(), temp);
@@ -185,17 +225,47 @@ namespace ray_intersection {
 		}
 		t = temp;
 	}
-	
+
 	bool rayTreeIntersect(const ray& r, AabbTree<triangle>& tree, float& t)
 	{
 		AabbTree<triangle>::AabbNode* rootNode = tree.Root();
-		std::cout << "Before ray tree intersect: " << t << std::endl;
 		rayNodeIntersect(r, rootNode, t);
-		std::cout << "After ray tree intersect: " << t << std::endl;
 		if (t > 0) return true;
 		else return false;
 	}
-	
+
+	//Method that checks if the intersection point (ray-mesh) intersects with a given array of vertices, returns the intersected vertex
+	bool vertexIntersection(const vec3& intersectPoint, const std::vector<HE_Vertex*> vertices, HE_Vertex*& intersectedVertex)
+	{
+		//This constant might need a change depending on the vertice allignment of loaded simple mesh. Precision of vertex intersection can be obtained easily
+		//using distance debugging on line 217
+		float blckrn_constant = 0.00025;
+		//using distance debugging on line 217
+		//float blckrn_constant = 0.25;
+		//This constant adjusts the required minimum length between the intersection point and the center position of the intersected vertex
+
+		float tmp_distance = 500;
+		bool intersect = false;
+		for (int i = 0; i < size(vertices); i++) {
+			//Distance between two vec3
+			float x = intersectPoint.x() - vertices[i]->position.x();
+			float y = intersectPoint.y() - vertices[i]->position.y();
+			float z = intersectPoint.z() - vertices[i]->position.z();
+
+			float distance = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
+
+			if (distance < blckrn_constant) {
+				//std::cout << "Intersection happened! Distance: " << distance<< std::endl;
+				if (distance < tmp_distance) {
+					tmp_distance = distance;
+					intersectedVertex = vertices[i];
+				}
+				intersect = true;
+			}
+		}
+
+		return intersect;
+	}
 	vec3 getIntersectionPoint(const ray& r, const float& t)
 	{
 		return r.origin + t * r.direction;
