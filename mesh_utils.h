@@ -2,10 +2,13 @@
 #include "halfedgemesh.h"
 #include "aabb_tree.h"
 #include <cgv/media/axis_aligned_box.h>
-
 using namespace cgv::math;
 typedef typename fvec<float, 3> vec3;
+typedef typename fvec<float, 4> vec4;
 typedef typename cgv::media::axis_aligned_box<float, 3> box3;
+typedef cgv::media::mesh::simple_mesh<float> mesh_type;
+typedef mesh_type::idx_type idx_type;
+typedef mesh_type::vec3i vec3i;
 
 namespace mesh_utils {
     void getVerticesOfFace(HE_Mesh* m, HE_Face* face, vec3& p1, vec3& p2, vec3& p3) {
@@ -159,8 +162,8 @@ namespace mesh_utils {
         }
 
     }
-    /*//brute force with middle of triangle
-    float shortest_distance(const vec3 point, HE_Mesh* newMesh, HE_Face* & closestFace, vec3& closestPoint) {
+    //brute force with middle of triangle
+    float shortest_distance(const vec3 point, HE_Mesh* newMesh, HE_Face*& closestFace, vec3& closestPoint) {
         float min_dist = std::numeric_limits<float>::max();
         vec3 p1, p2, p3;
         closestFace;
@@ -177,7 +180,7 @@ namespace mesh_utils {
 
         }
         return min_dist;
-    }*/
+    }
 
 
 
@@ -209,13 +212,52 @@ namespace mesh_utils {
         return (closestPoint - point).length();
     }
 
-    /*void shiftPositions(HE_Mesh* mesh, vec3 direction) {
-        for (auto v : *mesh->GetVertices()) {
-            v->position += direction;
-        }
-        return;
-    }*/
+    /*HE_Mesh* smoothing_laplacian(HE_Mesh* m, cgv::render::render_types::mat4 transformation_matrix) {
+        std::vector<vec3> newPositions;
 
+        for (HE_Vertex* v : *m->GetVertices()) {
+            int number = 0;
+            vec3 newpos = vec3(0, 0, 0);
+            for (HE_Vertex* neighbor: m->GetNeighborVertices(v)) {
+                number++;
+                newpos += neighbor->position;
+            }
+            newpos /= number;
+            newPositions.push_back(newpos);
+        }
+        int i = 0;
+        for (HE_Vertex* v : *m->GetVertices()) {
+            //std::cout << i << " " << v->position << ", " << newPositions[i] << std::endl;
+            vec4 n = vec4(newPositions[i], 1);
+            vec4 newpos = n * transformation_matrix;
+            v->position = vec3(newpos.x(), newpos.y(), newpos.z());
+            ++i;
+
+        }
+        return m;
+    }
+
+    HE_Mesh* smoothing_laplacian_points(HE_Mesh* m, std::vector<HE_Vertex*> points) {
+        std::vector<vec3> newPositions;
+        for (HE_Vertex* v : points) {
+            int number = 0;
+            vec3 newpos = vec3(0, 0, 0);
+            for (HE_Vertex* neighbor : m->GetNeighborVertices(v)) {
+                number++;
+                newpos += neighbor->position;
+            }
+            newpos /= number;
+            newPositions.push_back(newpos);
+        }
+        int i = 0;
+        for (HE_Vertex* v : points) {
+            //std::cout << i << " " << v->position << ", " << newPositions[i] << std::endl;
+            v->position = newPositions[i];
+            ++i;
+
+        }
+        return m;
+    }*/
 
 
 }
