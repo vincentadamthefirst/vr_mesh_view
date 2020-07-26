@@ -65,6 +65,21 @@ std::vector<HE_Face*> HE_Mesh::GetAdjacentFaces(HE_Face* face) {
 	return toReturn;
 }
 
+std::vector<HE_Face*> HE_Mesh::GetAdjacentFaces(HE_Vertex* vertex) {
+	std::vector<HE_Face*> toReturn;
+	for (auto face : faces) {
+		std::vector<HE_Vertex*> vertices_of_face = GetVerticesForFace(face);
+		for (int i = 0; i < 3; i++) {
+			if (vertex == vertices_of_face[i]) {
+				toReturn.push_back(face);
+				break;
+			}
+		}
+	}
+
+	return toReturn;
+}
+
 HE_Face* HE_Mesh::AddBoundary(HE_Edge* edge) {
 	HE_Vertex* v = edge->origin;
 	boundaryVertices.push_back(v);
@@ -197,6 +212,31 @@ bool HE_Mesh::deleteFace(HE_Face* f){
 	return true;
 }
 
+bool HE_Mesh::deleteVector(HE_Vertex* vertex) {
+	auto v = std::find(vertices.begin(), vertices.end(), vertex);
+	if (v == vertices.end())
+		return false;
+
+	auto del_vertex = std::find(vertices.begin(), vertices.end(), vertex);
+	if (del_vertex != vertices.end()) {
+		std::cout << "vertices deleted." << std::endl;
+		vertices.erase(del_vertex);
+	}
+	auto del_originalVertex = originalVectorIndices.find(vertex->originalIndex);
+	if (del_originalVertex != originalVectorIndices.end()) {
+		originalVectorIndices.erase(del_originalVertex);
+		std::cout << "originalVectorIndices deleted." << std::endl;
+	}
+	vertex->originalIndex = NULL;
+	vertex->position = NULL;
+
+	try {
+		delete vertex;
+	}
+	catch (std::exception& e) { std::cout << e.what() << std::endl; }
+
+	return true;
+}
 
 void HE_Mesh::showAllInfo(HE_Mesh * he)
 {
