@@ -69,6 +69,8 @@ public:
 
 	/// return adjacent faces for a given one in the mesh (for now only triangles supported)
 	std::vector<HE_Face*> GetAdjacentFaces(HE_Face* face);
+	/// return adjacent faces for a given vertex
+	std::vector<HE_Face*> GetAdjacentFaces(HE_Vertex* vertex);
 	/// return vertices making up a face (for now only triangles supported)
 	std::vector<HE_Vertex*> GetVerticesForFace(HE_Face* face);
 	/// returns neighbor vertices fo a given Vertex
@@ -83,6 +85,7 @@ public:
 	HE_Face* AddBoundary(HE_Edge* edge);
 
 	bool deleteFace(HE_Face* f);
+	bool deleteVector(HE_Vertex* vertex);
 	void showAllInfo(HE_Mesh * he);
 
 private:
