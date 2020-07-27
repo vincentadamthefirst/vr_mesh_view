@@ -387,7 +387,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				break;
 			}
 
-			case vr::VR_LEFT_BUTTON2:
+			case vr::VR_RIGHT_STICK_UP:
 			{
 				if (!animationmode) {
 					//vertex deletion mode
@@ -472,6 +472,14 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					pathi = 0;
 					
 				}break;
+			}
+			case vr::VR_RIGHT_STICK_RIGHT:
+			{
+				if (!animationmode) {
+					update_measurements();
+				}
+
+				break;
 			}
 			//apply laplacian smoothing			
 			case vr::VR_LEFT_STICK_RIGHT:
@@ -1428,10 +1436,7 @@ bool vr_mesh_view::read_mesh(const std::string& file_name)
 		he = generate_from_simple_mesh(M);
 		build_aabbtree_from_triangles(he, aabb_tree);
 
-		float volume = mesh_utils::volume(he);
-		float surface = mesh_utils::surface(he);
-		label_text = "Volume: " + std::to_string(volume) + "\nSurface: " + std::to_string(surface);
-		label_outofdate = true;
+		update_measurements();	
 
 	}
 	sphere_style.radius = float(0.05 * sqrt(B.get_extent().sqr_length() / Vector_count));
@@ -1960,6 +1965,21 @@ void vr_mesh_view::add_face_to_smoothingMesh(HE_Face* f) {
 	B_smoothing = smoothingMesh.compute_box();
 	have_new_smoothingMesh = true;
 	post_redraw();
+}
+
+
+void vr_mesh_view::update_measurements() {
+
+	float volume = mesh_utils::volume(he);
+	float surface = mesh_utils::surface(he);
+
+	vec3 cl;
+	vec3 point = vec3(0, 0, 0);
+	float shortest = mesh_utils::shortest_distance_AD(point, aabb_tree, cl);
+
+	label_text = "Volume: " + std::to_string(volume) + "\nSurface: " + std::to_string(surface) + "\nshortest distance to mesh from head: " + std::to_string(shortest);
+	label_outofdate = true;
+
 }
 #include <cgv/base/register.h>
 

@@ -194,7 +194,7 @@ protected:
 
 
 	std::vector<HE_Vertex*> smoothingpoints;
-	const std::string mesheditingmode_text = "Mesh Editing Mode \nButtons:\nMenu: Change Mode\nL-Stick U: Tesselation\nL-Stick L: Vertex Manipulation\nL-Stick D: Select Smoothing Face\nL-Stick R: Apply Smoothing\n\n";
+	const std::string mesheditingmode_text = "Mesh Editing Mode \nButtons:\nMenu: Change Mode\nL-Stick L: Tesselation\nL-Stick U: Vertex Manipulation\nL-Stick D: Select Smoothing Face\nL-Stick R: Apply Smoothing\n\nR-Stick U: Vertex Deletion\nR-Stick R: Recalculate Measurements\n";
 	const std::string animationmode_text = "Animation Mode \nButtons:\nMenu: Change Mode\nTouch R-Stick: Draw Animation path \n+ translation\nR-Stick D: Go back to Origin\nTouch R-Stick and press R-Stick D: \nRestart Animation \nTouch L-Stick: Rotation and Translation\n";
 	std::string label_text;
 	int label_font_idx;
@@ -296,7 +296,7 @@ public:
 	bool vr_mesh_view::build_simple_mesh_from_HE();
 
 	void add_face_to_smoothingMesh(HE_Face* f);
-	
+	void update_measurements();
 
 };
 
