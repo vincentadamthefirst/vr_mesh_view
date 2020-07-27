@@ -174,7 +174,7 @@ protected:
 
 	//tessellation 
 	bool rightButton1IsPressed = false;
-	int nr_tes_intersection = 0;
+
 	//vertex manipulation
 	bool leftButton1IsPressed = false;
 	bool isVertexPicked = false;
@@ -293,7 +293,7 @@ public:
 	void vertex_deletion(const vec3& origin, const vec3& direction);
 	void vertex_manipulate(HE_Vertex* vertex, vec3 pos, vec3 last_pos);
 	void drawpath(cgv::render::context& ctx, std::vector<vec3> path_list);
-	bool vr_mesh_view::build_simple_mesh_from_HE();
+	void build_simple_mesh_from_HE();
 
 	void add_face_to_smoothingMesh(HE_Face* f);
 	void update_measurements();

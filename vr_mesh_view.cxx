@@ -402,13 +402,14 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 			case vr::VR_LEFT_STICK_LEFT:
 			//case vr::VR_RIGHT_BUTTON1:
 			{
-				std::cout << "animationmode" << animationmode << std::endl;
+				//std::cout << "animationmode" << animationmode << std::endl;
 				if (!animationmode) {
 					vec3 origin, direction;
 					rightButton1IsPressed = true;
+					std::cout << "Left button is clicked. Welcome to Tessellation!" << std::endl;
 					vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
 					tessellation(origin, direction);
-					std::cout << "Here IS Tessellation!" << std::endl;
+					
 				}
 				break;
 			}
@@ -1603,6 +1604,8 @@ void vr_mesh_view::applySmoothing() {
 	M.compute_vertex_normals();
 	B = M.compute_box();
 	have_new_mesh = true;
+	//maybe here transform from local to global
+	//
 	post_redraw();
 	//rebuild aabb
 	build_aabbtree_from_triangles(he, aabb_tree);
@@ -1644,9 +1647,6 @@ void vr_mesh_view::applySmoothingPoints() {
 }
 
 void vr_mesh_view::tessellation(const vec3& origin, const vec3& direction) {
-	M.write("xxx.obj");
-	std::cout << "before deletion" << std::endl;
-	//he->showAllInfo(he);
 	//global to local
 	vec3 new_origin = global_to_local(origin);
 	vec3 point_on_ray = origin + direction;
@@ -1656,113 +1656,57 @@ void vr_mesh_view::tessellation(const vec3& origin, const vec3& direction) {
 	// create ray
 	ray_intersection::ray tes_ray = ray_intersection::ray(new_origin, new_dir);
 	float t = 0.0;
-	std::cout << "tesselationfunction" << std::endl;
+	//check if the ray intersects with the aabb tree 
 	if (ray_intersection::rayTreeIntersect(tes_ray, aabb_tree, t)) {
-
-		std::cout << "ray tree intersection" << std::endl;
-		vr_mesh_view::nr_tes_intersection++;
+		
 		vec3 tes_inter_point = ray_intersection::getIntersectionPoint(tes_ray, t);
 		HE_Face* tes_face = ray_intersection::getIntersectedFace(tes_ray, he);
-		//vec3 p1, p2, p3;
-		//mesh_utils::getVerticesOfFace(he, tes_face, p1, p2, p3);
+		//get three vertices in the tessellated face
+		auto tes_point = he->GetVerticesForFace(tes_face);
+		//add the intersected point to the simple mesh
+		idx_type new_point_index = M.new_position(tes_inter_point);
+		if (he->deleteFace(tes_face)) {
+			std::cout << "Tessellation: Deleted face in half edge data structure."<< std::endl;
+			// add three faces to the original half edge mesh
+			for (int i = 0; i < 3; i++) {
+				unsigned int vectorAIndex = tes_point[i]->originalIndex;
+				unsigned int vectorBIndex = tes_point[(i + 1) % 3]->originalIndex;
+				unsigned int vectorCIndex = new_point_index;
 
-		auto tes_point = he->GetVerticesForFace(tes_face); //three vertices in the tes_face
-		std::cout<< "DELETE FACE "<< tes_point[0]->position << std::endl;
-		std::cout << tes_point[1]->position << std::endl;
-		std::cout << tes_point[2]->position << std::endl;
+				// adding the 3 vectors
+				auto vectorA = he->AddVector(vectorAIndex, tes_point[i]->position);
+				auto vectorB = he->AddVector(vectorBIndex, tes_point[(i + 1) % 3]->position);
+				auto vectorC = he->AddVector(vectorCIndex, tes_inter_point);
 
-		he->deleteFace(tes_face);
+				auto face = he->AddFace();
 
-		//std::cout << "size tes points" << tes_point.size() << std::endl; // always 3
-		// add three faces to the original half edge mesh
-		for (int i = 0; i < 3; i++) {
-			unsigned int vectorAIndex = tes_point[i]->originalIndex;
-			unsigned int vectorBIndex = tes_point[(i + 1) % 3]->originalIndex;
-			unsigned int vectorCIndex = M.get_nr_positions() + nr_tes_intersection;
-
-			// adding the 3 vectors
-			auto vectorA = he->AddVector(vectorAIndex, tes_point[i]->position);
-			auto vectorB = he->AddVector(vectorBIndex, tes_point[(i + 1) % 3]->position);
-			auto vectorC = he->AddVector(vectorCIndex, tes_inter_point);
-
-			auto face = he->AddFace();
-
-			// generating 3 half edges per triangle
-			auto halfEdgeC = he->AddHalfEdge(vectorC, vectorA, face);
-
-			
-
-
-			auto halfEdgeB = he->AddHalfEdge(vectorB, vectorC, face, halfEdgeC);
-			auto halfEdgeA = he->AddHalfEdge(vectorA, vectorB, face, halfEdgeB);
-
-			if (halfEdgeC->twin == nullptr)
-				std::cout << "no twin C"<< i << std::endl;
-			if (halfEdgeB->twin == nullptr)
-				std::cout << "no twin B" << i << std::endl;
-			if (halfEdgeA->twin == nullptr)
-				std::cout << "no twin A" << i << std::endl;
-			// closing the loop
-			halfEdgeC->next = halfEdgeA;
+				// generating 3 half edges per triangle
+				auto halfEdgeC = he->AddHalfEdge(vectorC, vectorA, face);
+				auto halfEdgeB = he->AddHalfEdge(vectorB, vectorC, face, halfEdgeC);
+				auto halfEdgeA = he->AddHalfEdge(vectorA, vectorB, face, halfEdgeB);
+				/*
+				if (halfEdgeC->twin == nullptr)
+					std::cout << "no twin C" << i << std::endl;
+				if (halfEdgeB->twin == nullptr)
+					std::cout << "no twin B" << i << std::endl;
+				if (halfEdgeA->twin == nullptr)
+					std::cout << "no twin A" << i << std::endl;
+				*/
+				// closing the loop
+				halfEdgeC->next = halfEdgeA;
+			}
+			//build a new simple mesh from half edge data structure 
+			build_simple_mesh_from_HE();
+			have_new_mesh = true;
+			post_redraw();
+			build_aabbtree_from_triangles(he, aabb_tree);
 		}
-		
-
-		//create a new normal 
-		idx_type normal_idx = M.new_normal(vec3(0.0f, -1.0f, 0.0f));
-		//create a global point vector
-		vec4 trans_point = vec4(0);
-		//transform the intersected point from local to global system
-		//trans_point = transformation_matrix * vec4(tes_inter_point, 1.0);
-		//create a new position in the simple mesh M
-		//idx_type tes_pos_idx = M.new_position(vec3(trans_point[0], trans_point[1], trans_point[2]));
-		idx_type tes_pos_idx = M.new_position(vr_mesh_view::local_to_global(tes_inter_point));
-		// add new faces to simple mesh
-		for (int i = 0; i < 3; i++) {
-			//create a new face
-			M.start_face();
-			// tell the mesh to save a new corner (vertex) with the position and normal given as indices
-			M.new_corner(tes_pos_idx, normal_idx);
-
-			idx_type pos_idx;
-			pos_idx = tes_point[i]->originalIndex;
-			//create the second corner for each face
-			M.new_corner(pos_idx, normal_idx);
-
-			// create the last corner
-			pos_idx = tes_point[(i + 1) % 3]->originalIndex;
-			M.new_corner(pos_idx, normal_idx);
-
+		else {
+			std::cout << "Tessellation: Face Deletion is not successful." << std::endl;
 		}
-		//output some useful information
-		/*
-		std::cout << tes_inter_point << std::endl;
-
-		std::cout << "normal :" << M.normal(tes_point[0]->originalIndex) << std::endl;
-		std::cout << "normal :" << M.normal(tes_point[1]->originalIndex) << std::endl;
-		std::cout << "normal :" << M.normal(tes_point[2]->originalIndex) << std::endl;
-		std::cout << "nr_face " << M.get_nr_faces() << std::endl;
-		std::cout << "nr_normal " << M.get_nr_normals() << std::endl;
-		std::cout << "nr_position " << M.get_nr_positions() << std::endl;
-		std::cout << "begin_corner 0 " << M.begin_corner(0) << std::endl;
-		std::cout << "end_corner 0 " << M.end_corner(0) << std::endl;
-		std::cout << "begin_corner 11 " << M.begin_corner(11) << std::endl;
-		std::cout << "end_corner 11" << M.end_corner(11) << std::endl;
-		*/
-		
-		//compute the normals again
-		//std::cout << "after deletion" << std::endl;
-		//he->showAllInfo(he);
-		
-		//M.compute_vertex_normals();
-		//B = M.compute_box();
-		
-		build_simple_mesh_from_HE();
-		have_new_mesh = true;
-		post_redraw();
-		build_aabbtree_from_triangles(he, aabb_tree);
 	}
 	else {
-		std::cout << "No intersection" << std::endl;
+		std::cout << "Tessellation: No intersection." << std::endl;
 	}
 }
 
@@ -1844,74 +1788,51 @@ void vr_mesh_view::vertex_deletion(const vec3& origin, const vec3& direction) {
 		std::cout << "No vertex intersection, vertex deletion couldn't be operated." << std::endl;
 }
 
-bool vr_mesh_view::build_simple_mesh_from_HE() {
 
-	int number = M.get_nr_normals();
-
-	/*std::vector<vec3> old_normals(number);
-	for(int i = 0; i < number; i++)
-		old_normals[i] = M.normal(number);*/
-
+//build a new simple mesh from half edge data structure
+void vr_mesh_view::build_simple_mesh_from_HE() {
 	M.clear();
-	std::map<vec3, int> indexmap ;
-	std::map<int, HE_Vertex> vertexxmap;
-	std::map<vec3, int>::iterator it;
-	int i = 0;
+	//build map from orginal index to new index of position for quicly searching
+    //key: originalindex, value: new index 
+	std::map<int, idx_type> indexmap;
+	std::map<int, idx_type>::iterator it;
+	//add vertices to new simple mesh
 	for (auto v : *he->GetVertices()) {
-
 		vec3 pos = v->position;
-
-		idx_type tes_pos_idx = M.new_position(pos);
-		std::cout << "tes_pos_idx " << tes_pos_idx << std::endl;
-		indexmap.insert(std::make_pair(pos,tes_pos_idx));
-	    /*it = indexmap.find(i);
-		if (it != indexmap.end())
-			std::cout << "find was succesful" << std::endl;
-		else
-			std::cout << "find was not succesful" << std::endl;*/
-		//std::cout << "indexmap at pos " << indexmap.find(tes_pos_idx)->first << " " << indexmap.find(tes_pos_idx)->second  << std::endl;
-		//i++;
+		idx_type pos_idx = M.new_position(pos);
+		indexmap.insert(std::make_pair(v->originalIndex, pos_idx));
 	}
-	/*for (auto it = indexmap.rbegin(); it != indexmap.rend(); ++it)
-		std::cout << it->first << " " << it->second << std::endl;
 
-	std::cout << "indexmap " << indexmap.size() << std::endl;*/
-
-	
+	//add faces to new simple mesh
 	for (auto f : *he->GetFaces()) {
-
 	   std::vector<HE_Vertex*> vertices  = he->GetVerticesForFace(f);
-
-
-	   /*
-	    std::cout << "index 1 " << indexmap.at(vertices[0]->position) << std::endl;
-	   std::cout << "index 2 " << indexmap.at(vertices[1]->position) << std::endl;
-	   std::cout << "index 3 " << indexmap.at(vertices[2]->position) << std::endl;
-	   */
-	   vec3 edge1 = vertices[0]->position - vertices[1]->position;
-	   vec3 edge2 = vertices[0]->position - vertices[2]->position;
-	   vec3 n = cross(edge2, edge1);
-	   n.normalize();
-
-	   idx_type normal_idx = M.new_normal(n);
+	   //build a normal, later will be calculated again
+	   idx_type normal_idx = M.new_normal(vec3(1.0, 0.0, 0.0));
+	   //build a new face
 		M.start_face();
-		for (auto it = indexmap.rbegin(); it != indexmap.rend(); ++it) {
-			if (it->first == vertices[0]->position)
-				M.new_corner(it->second, normal_idx);
-			if (it->first == vertices[1]->position)
-				M.new_corner(it->second, normal_idx);
-			if (it->first == vertices[2]->position)
-				M.new_corner(it->second, normal_idx);
+		//through originalindex find the new index of position
+		it = indexmap.find(vertices[0]->originalIndex);
+		if (it != indexmap.end()) {
+			M.new_corner(it->second, normal_idx);
 		}
-
+		it = indexmap.find(vertices[1]->originalIndex);
+		if (it != indexmap.end()) {
+			M.new_corner(it->second, normal_idx);
+		}
+		it = indexmap.find(vertices[2]->originalIndex);
+		if (it != indexmap.end()) {
+			M.new_corner(it->second, normal_idx);
+		}
 	}
 	M.compute_vertex_normals();
 	B = M.compute_box();
+	/*
 	std::cout << "nr_face " << M.get_nr_faces() << std::endl;
 	std::cout << "nr_normal " << M.get_nr_normals() << std::endl;
 	std::cout << "nr_position " << M.get_nr_positions() << std::endl;
-	M.write("test.obj");
-	return true;
+	*/
+	//write the new simple mesh to a object
+	M.write("new.obj");
 
 }
 void vr_mesh_view::vertex_manipulate(HE_Vertex* vertex, vec3 pos, vec3 last_pos) {

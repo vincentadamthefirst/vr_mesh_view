@@ -105,10 +105,6 @@ namespace ray_intersection {
 		HE_Face* temp_face = new HE_Face();
 		int i = 0;
 		for (auto face : *mesh->GetFaces()) {
-
-
-			
-
 			if (rayFaceIntersect(r, mesh, face, t))
 			{
 				i++;
@@ -118,10 +114,8 @@ namespace ray_intersection {
 					temp_t = t;
 					temp_face = face;
 				}		
-			}else
-				std::cout << "face is not intersecting" << std::endl;
-
-
+			}//else
+				//std::cout << "face is not intersecting" << std::endl;
 		}
 		if (intersect)
 			return temp_face;
