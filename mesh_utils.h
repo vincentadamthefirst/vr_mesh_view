@@ -1,4 +1,7 @@
+#ifndef MESH_INT_H
+#define MESH_INT_H
 #pragma once
+
 #include "halfedgemesh.h"
 #include "aabb_tree.h"
 #include <cgv/media/axis_aligned_box.h>
@@ -12,19 +15,19 @@ typedef mesh_type::idx_type idx_type;
 typedef mesh_type::vec3i vec3i;
 
 namespace mesh_utils {  
-    void getVerticesOfFace(HE_Mesh* m, HE_Face* face, vec3& p1, vec3& p2, vec3& p3) {
+    static void getVerticesOfFace(HE_Mesh* m, HE_Face* face, vec3& p1, vec3& p2, vec3& p3) {
         std::vector<HE_Vertex*> v = m->GetVerticesForFace(face);
         p1 = v[0]->position;
         p2 = v[1]->position;
         p3 = v[2]->position;
     }
-    float triangle_area(vec3 p1, vec3 p2, vec3 p3) {
+    static float triangle_area(vec3 p1, vec3 p2, vec3 p3) {
         vec3 a = p1 - p2;
         vec3 b = p3 - p2;
         return cross(a, b).length() / 2.0f;
     }
 
-    float surface(HE_Mesh *newMesh) {
+    static float surface(HE_Mesh *newMesh) {
         float result = 0.0f;
         vec3 p1, p2, p3;
         for (auto face : *newMesh->GetFaces()) {
@@ -35,11 +38,11 @@ namespace mesh_utils {
         return result;
     }
 
-    float signed_volume_tetrahedron(vec3 p1, vec3 p2, vec3 p3) {
+    static float signed_volume_tetrahedron(vec3 p1, vec3 p2, vec3 p3) {
         return dot(p1, cross(p2, p3)) / 6.0f;
     }
 
-    float volume(HE_Mesh *newMesh) {
+    static float volume(HE_Mesh *newMesh) {
         if (!newMesh->isClosed()) return -1;
         float result = 0;
         vec3 p1, p2, p3;
@@ -52,7 +55,7 @@ namespace mesh_utils {
    
     //relative position on line ... proj == a --> retrun 0, proj ==b --> return 1
     //proj needs to be a point on the line 
-    float position_on_line(vec3 a, vec3 b, vec3 proj) {
+    static float position_on_line(vec3 a, vec3 b, vec3 proj) {
         vec3 t = proj - a;
         vec3 s = b - a;
         // s and t are pointing in the same direction
@@ -62,14 +65,14 @@ namespace mesh_utils {
             return -t.length() / s.length();
     }
     // p is projected onto line ab
-    vec3 projection_onto_line(vec3 a, vec3 b, vec3 p) {
+    static vec3 projection_onto_line(vec3 a, vec3 b, vec3 p) {
         vec3 ap = p - a;
         vec3 ab = b - a;
         return a + dot(ap, ab) / dot(ab, ab) * ab;
     }
 
     // gives back the closest point on edge --> vertex or projected edgepoint
-    vec3 closest_point_on_edge(vec3 a, vec3 b, vec3 p) {
+    static vec3 closest_point_on_edge(vec3 a, vec3 b, vec3 p) {
         vec3 proj = projection_onto_line(a, b, p);
         float pos = position_on_line(a, b, proj);
 
@@ -82,7 +85,7 @@ namespace mesh_utils {
     }
 
     // the closest point from point p on triangle (a,b,c) is returned
-    vec3 closest_point_on_triangle(vec3 p, vec3 a, vec3 b, vec3 c) {
+    static vec3 closest_point_on_triangle(vec3 p, vec3 a, vec3 b, vec3 c) {
         // Find normal to plane n = (b - a) x (c - a)
         vec3 n = cross(b - a, c - a);
         n.normalize();
@@ -164,7 +167,7 @@ namespace mesh_utils {
 
     }
     //brute force with middle of triangle
-    float shortest_distance(const vec3 point, HE_Mesh* newMesh, HE_Face* & closestFace, vec3& closestPoint) {
+    static float shortest_distance(const vec3 point, HE_Mesh* newMesh, HE_Face* & closestFace, vec3& closestPoint) {
         float min_dist = std::numeric_limits<float>::max();
         vec3 p1, p2, p3;
         closestFace;
@@ -190,7 +193,7 @@ namespace mesh_utils {
 
    
     
-    void closest_point_node(const vec3 point, AabbTree<triangle>::AabbNode* node, vec3 & closestPoint) {
+    static void closest_point_node(const vec3 point, AabbTree<triangle>::AabbNode* node, vec3 & closestPoint) {
         if (node->is_leaf()) {
             std::vector<vec3> t = node->get_triangle();
             closestPoint = closest_point_on_triangle(point, t.at(0), t.at(1), t.at(2));
@@ -210,11 +213,13 @@ namespace mesh_utils {
         }
     }
 
-    //77with acceleration structure
-    float shortest_distance_AD(vec3 point, AabbTree<triangle> tree, vec3& closestPoint) {
+    //with acceleration structure
+    static float shortest_distance_AD(vec3 point, AabbTree<triangle> tree, vec3& closestPoint) {
 		AabbTree<triangle>::AabbNode* rootNode = tree.Root();		
         closest_point_node(point, rootNode, closestPoint);
 
         return (closestPoint - point).length();
     }
 }
+
+#endif //MESH_INT_H

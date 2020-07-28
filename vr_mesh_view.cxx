@@ -291,7 +291,7 @@ vr_mesh_view::vr_mesh_view()
 
 	auto icoMesh = icoSphere.RetrieveMesh();
 
-	//auto tmp = SimpleCSG::Subtract(icoMesh, icoSphere);
+	auto tmp = SimpleCSG::Subtract(icoMesh, icoSphere);
 }
 	
 void vr_mesh_view::stream_help(std::ostream& os) {

@@ -27,13 +27,13 @@
 #include <vr_view_interactor.h>
 #include <vr_render_helpers.h>
 
-#include "halfedgemesh.h"
-#include "aabb_tree.h"
-#include "triangle.h"
+//#include "halfedgemesh.h"
+//#include "aabb_tree.h"
+//#include "triangle.h"
 #include "occuluscontroller.h"
-#include "intersection.h"
-#include "ray_intersection.h"
-#include "icosphere.h"
+//#include "intersection.h"
+//#include "ray_intersection.h"
+//#include "icosphere.h"
 #include "simple_csg.h"
 
 

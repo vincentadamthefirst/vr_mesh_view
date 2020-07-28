@@ -1,4 +1,8 @@
+#ifndef RAY_INT_H
+#define RAY_INT_H
 #pragma once
+
+
 #include <cgv\math\fvec.h>
 #include <cgv/media/axis_aligned_box.h>
 
@@ -16,7 +20,7 @@ namespace ray_intersection {
 
 		ray(vec3 org, vec3 dir) : origin(org), direction(dir) {};
 	};
-	bool isInsideTriangle(const vec3& v0, const vec3& v1, const vec3& v2, const vec3& p)
+	static bool isInsideTriangle(const vec3& v0, const vec3& v1, const vec3& v2, const vec3& p)
 	{
 		vec3 edge0 = v1 - v0;
 		vec3 edge1 = v2 - v1;
@@ -31,7 +35,7 @@ namespace ray_intersection {
 		return false;
 	}
 	//t value gives the distance multiplier 
-	bool rayTriangleIntersect(const ray& r, const vec3& v0, const vec3& v1, const vec3& v2, float& t)
+	static bool rayTriangleIntersect(const ray& r, const vec3& v0, const vec3& v1, const vec3& v2, float& t)
 	{
 		vec3 d = r.direction;
 		vec3 o = r.origin;
@@ -62,7 +66,7 @@ namespace ray_intersection {
 		
 	}
 	
-	bool rayFaceIntersect(ray& r, HE_Mesh* mesh, HE_Face* face, float& t)
+	static bool rayFaceIntersect(ray& r, HE_Mesh* mesh, HE_Face* face, float& t)
 	{
 		vec3 v0, v1, v2;
 		mesh_utils::getVerticesOfFace(mesh, face, v0, v1, v2);
@@ -73,7 +77,7 @@ namespace ray_intersection {
 		return false;
 	}
 	
-	bool rayMeshIntersect(ray& r, HE_Mesh* mesh, float& t)
+	static bool rayMeshIntersect(ray& r, HE_Mesh* mesh, float& t)
 	{
 		vec3 v0, v1, v2;
 		bool intersect = false;
@@ -95,7 +99,7 @@ namespace ray_intersection {
 			return true;
 		}
 	}
-	HE_Face* getIntersectedFace(ray& r, HE_Mesh* mesh)
+	static HE_Face* getIntersectedFace(ray& r, HE_Mesh* mesh)
 	{
 		vec3 v0, v1, v2;
 		bool intersect = false;
@@ -124,7 +128,7 @@ namespace ray_intersection {
 		}
 	}
 	
-	bool getIntersectedFace_with_t(ray& r, HE_Mesh* mesh, float& main_t, HE_Face*& f)
+	static bool getIntersectedFace_with_t(ray& r, HE_Mesh* mesh, float& main_t, HE_Face*& f)
 	{
 		vec3 v0, v1, v2;
 		bool intersect = false;
@@ -153,7 +157,7 @@ namespace ray_intersection {
 		}
 	}
 	
-	bool rayBoxIntersect(const ray& r, const box3& b)
+	static bool rayBoxIntersect(const ray& r, const box3& b)
 	{
 		vec3 max_pnt = b.get_max_pnt();
 		vec3 min_pnt = b.get_min_pnt();
@@ -197,7 +201,7 @@ namespace ray_intersection {
 	}
 
 	
-	void rayNodeIntersect(const ray& r, AabbTree<triangle>::AabbNode* node, float& t)
+	static void rayNodeIntersect(const ray& r, AabbTree<triangle>::AabbNode* node, float& t)
 	{
 		box3 box = node->get_box();
 		float temp = t;
@@ -219,7 +223,7 @@ namespace ray_intersection {
 		t = temp;
 	}
 	
-	bool rayTreeIntersect(const ray& r, AabbTree<triangle>& tree, float& t)
+	static bool rayTreeIntersect(const ray& r, AabbTree<triangle>& tree, float& t)
 	{
 		AabbTree<triangle>::AabbNode* rootNode = tree.Root();
 		rayNodeIntersect(r, rootNode, t);
@@ -228,7 +232,7 @@ namespace ray_intersection {
 	}
 	
 	//Method that checks if the intersection point (ray-mesh) intersects with a given array of vertices, returns the intersected vertex
-	bool vertexIntersection(const vec3& intersectPoint, const std::vector<HE_Vertex*> vertices, HE_Vertex*& intersectedVertex)
+	static bool vertexIntersection(const vec3& intersectPoint, const std::vector<HE_Vertex*> vertices, HE_Vertex*& intersectedVertex)
 	{
 		//This constant might need a change depending on the vertice allignment of loaded simple mesh. Precision of vertex intersection can be obtained easily
 		//using distance debugging on line 217
@@ -259,8 +263,11 @@ namespace ray_intersection {
 
 		return intersect;
 	}
-	vec3 getIntersectionPoint(const ray& r, const float& t)
+
+	static vec3 getIntersectionPoint(const ray& r, const float& t)
 	{
 		return r.origin + t * r.direction;
 	}
 }
+
+#endif // !RAY_INT_H
