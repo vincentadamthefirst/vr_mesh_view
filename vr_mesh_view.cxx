@@ -1839,17 +1839,11 @@ void vr_mesh_view::vertex_deletion(const vec3& origin, const vec3& direction) {
 		for (int i = 0; i < neighbor_vertices.size() - 2; i++) {
 			auto face = he->AddFace();
 
-			//HalfEdge possible direction 1
+			//Adding halfedges
 			auto newHalfEdge = he->AddHalfEdge(neighbor_vertices[0], neighbor_vertices[i + 2], face);
 			auto newHalfEdge2 = he->AddHalfEdge(neighbor_vertices[i + 1], neighbor_vertices[0], face, newHalfEdge);
 			auto newHalfEdge3 = he->AddHalfEdge(neighbor_vertices[i + 2], neighbor_vertices[i + 1], face, newHalfEdge2);
 			newHalfEdge->next = newHalfEdge3;
-			
-			//HalfEdge possible direction 2
-			auto newHalfEdge4 = he->AddHalfEdge(neighbor_vertices[i + 2], neighbor_vertices[0], face);
-			auto newHalfEdge5 = he->AddHalfEdge(neighbor_vertices[i + 1], neighbor_vertices[i + 2], face, newHalfEdge4);
-			auto newHalfEdge6 = he->AddHalfEdge(neighbor_vertices[0], neighbor_vertices[i + 1], face, newHalfEdge5);
-			newHalfEdge4->next = newHalfEdge6;
 		}
 		//std::cout << "Number of halfEdges after addition: " << (*he->GetHalfEdges()).size() << std::endl;
 		std::cout << "Number of faces after addition: " << (*he->GetFaces()).size() << std::endl;
