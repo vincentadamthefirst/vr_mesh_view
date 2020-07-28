@@ -314,6 +314,7 @@ void vr_mesh_view::on_set(void* member_ptr)
 				smoothingpoints.clear();
 				smoothingMesh.clear();
 				destructSmoothingMesh = true;
+				new_closest_point = false;
 			}
 				
 		}
@@ -349,11 +350,19 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 			case vr::VR_RIGHT_MENU:
 			{				
 				bButtonIsPressed = true;
+				new_closest_point = false;
 				animationmode = animationmode ? false : true;
-				if(animationmode)
+				if (animationmode) {
+					show_animationpath = true;
 					std::cout << "Animation Mode" << std::endl;
-				else
+				}					
+				else {
+					show_animationpath = false;
+					//defined_path2.clear();
+					//defined_path.clear();
 					std::cout << "Mesh Editing Mode" << std::endl;
+				}
+					
 				label_outofdate = true;
 				destructSmoothingMesh = true;
 				smoothingpoints.clear();
@@ -365,10 +374,18 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 			case vr::VR_LEFT_MENU: 
 			{
 				animationmode = animationmode ? false : true;
-				if (animationmode)
+				if (animationmode) {
+					show_animationpath = true;
 					std::cout << "Animation Mode" << std::endl;
-				else
+				}
+				else {
+					show_animationpath = false;
+					//defined_path2.clear();
+					//defined_path.clear();
 					std::cout << "Mesh Editing Mode" << std::endl;
+				}
+
+				new_closest_point = false;
 				yButtonIsPressed = true;
 				label_outofdate = true;
 				destructSmoothingMesh = true;
@@ -395,7 +412,11 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					//vertex deletion mode
 					std::cout << "Vertex Deletion activated" << std::endl;
 					vec3 origin, direction;
-					vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));	
+					vrke.get_state().controller[1].put_ray(&origin(0), &direction(0));
+
+
+
+
 					vertex_deletion(origin, direction);
 				}
 				break;
@@ -476,16 +497,47 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					
 				}break;
 			}
-			case vr::VR_LEFT_BUTTON2:
-			//case vr::VR_RIGHT_STICK_RIGHT:
+			//case vr::VR_LEFT_BUTTON2:
+			case vr::VR_RIGHT_STICK_RIGHT:
 			{
 				if (!animationmode) {
-					vec3 p = vec3(vrke.get_state().hmd.pose[9], vrke.get_state().hmd.pose[10], vrke.get_state().hmd.pose[11]);
+					//vec3 p = vec3(vrke.get_state().hmd.pose[9], vrke.get_state().hmd.pose[10], vrke.get_state().hmd.pose[11]);
+					vec3 origin, direction;
+					vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
 
+					vec3 p = vec3(vrke.get_state().controller[1].pose[9], vrke.get_state().controller[1].pose[10], vrke.get_state().controller[1].pose[11]);
+
+					//vec3 p = vec3(0,2,0);
+
+					referenceP = p;
+
+					p = global_to_local(p);
+					std::cout << "reference point for shortest distance: " << p << std::endl;
+					
+
+					update_measurements(p,true);
+				}
+
+				break;
+			}
+			case vr::VR_RIGHT_STICK_LEFT:
+			{
+				if (!animationmode) {
+					//vec3 p = vec3(vrke.get_state().hmd.pose[9], vrke.get_state().hmd.pose[10], vrke.get_state().hmd.pose[11]);
+					vec3 origin, direction;
+					vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
+
+					vec3 p = vec3(vrke.get_state().controller[1].pose[9], vrke.get_state().controller[1].pose[10], vrke.get_state().controller[1].pose[11]);
+
+					//vec3 p = vec3(0,2,0);
+
+					referenceP = p;
+
+					p = global_to_local(p);
 					std::cout << "reference point for shortest distance: " << p << std::endl;
 
 
-					update_measurements(p);
+					update_measurements(p, false);
 				}
 
 				break;
@@ -1092,7 +1144,7 @@ void vr_mesh_view::draw(cgv::render::context& ctx)
 		cgv::render::attribute_array_binding::disable_global_array(ctx, pi);
 		cgv::render::attribute_array_binding::disable_global_array(ctx, ti);
 	}
-	if (defined_path2.size() > 1) {
+	if (defined_path2.size() > 1 && show_animationpath) {
 		//drawpath(ctx, path_list_1);
 		drawpath(ctx, defined_path2);
 	}
@@ -1333,14 +1385,10 @@ void vr_mesh_view::create_gui() {
 		"save=true;save_title='save obj file';w=140");
 
 	align("\a");
-	add_member_control(this, "scale", mesh_scale, "value_slider", "min=0.01;max=3;ticks=true;log=true");
+	add_member_control(this, "scale", mesh_scale, "value_slider", "min=0.01;max=20;ticks=true;log=true");
 	align("\b");
 
-	align("\a");
-	add_decorator("Smoothing", "heading", "level=3");
-	connect_copy(add_button("apply")->click, rebind(this, &vr_mesh_view::applySmoothing));
-	align("\b");
-	
+		
 	if (begin_tree_node("mesh options", translate_vector, false, "options='w140';align=' '")) {
 		align("\a");
 
@@ -1710,6 +1758,7 @@ void vr_mesh_view::tessellation(const vec3& origin, const vec3& direction) {
 			}
 			//build a new simple mesh from half edge data structure 
 			build_simple_mesh_from_HE();
+			
 			have_new_mesh = true;
 			post_redraw();
 			build_aabbtree_from_triangles(he, aabb_tree);
@@ -1725,21 +1774,37 @@ void vr_mesh_view::tessellation(const vec3& origin, const vec3& direction) {
 
 void vr_mesh_view::vertex_deletion(const vec3& origin, const vec3& direction) {
 
-	ray_intersection::ray ray = ray_intersection::ray(origin, direction);
+	
+	vec3 new_origin = global_to_local(origin);
+	vec3 point_on_ray = origin + direction;
+	vec3 new_point_on_ray = global_to_local(point_on_ray);
+	vec3 new_dir = new_point_on_ray - new_origin;
+
+	ray_intersection::ray ray = ray_intersection::ray(new_origin, new_dir);
 	float t = 0;
 
 	//auto start = std::chrono::high_resolution_clock::now();
 	//bool boxIntersection = ray_intersection::rayTreeIntersect(ray, aabb_tree, t);
 	//auto stop = std::chrono::high_resolution_clock::now();
 	//auto duration = std::chrono::duration<double>(stop - start);
-	//std::cout << "Duration using aabb_tree/bounding box ray intersection: " << duration.count() << std::endl;
+	std::cout << "Duration using aabb_tree/bounding box ray intersection: "<< std::endl;
 	vec3 intersectionPoint = ray_intersection::getIntersectionPoint(ray, t);
 
 	//std::cout << "boxIntersection: " << boxIntersection << std::endl;
 	//std::cout << "Box Intersection t: " << t << std::endl;
-	//std::cout << "Intersection point: " << intersectionPoint << std::endl;
-
-	std::vector<HE_Vertex*> vertices_of_face = he->GetVerticesForFace(ray_intersection::getIntersectedFace(ray, he));
+	std::cout << "Intersection point: " << intersectionPoint << std::endl;
+	
+	HE_Face* f;
+	bool ff = ray_intersection::getIntersectedFace_with_t(ray, he, t, f);
+	std::vector<HE_Vertex*> vertices_of_face;
+	if (ff) {
+		vertices_of_face = he->GetVerticesForFace(f);
+	}
+	else {
+		std::cout << "no intersecting face, no vertex deletion" << std::endl;
+		return;
+	}
+	
 	//std::vector<HE_Vertex*> vertices_of_mesh = *he->GetVertices();
 	bool vertexIntersection = ray_intersection::vertexIntersection(intersectionPoint, vertices_of_face, intersectedVertex);
 
@@ -1755,16 +1820,17 @@ void vr_mesh_view::vertex_deletion(const vec3& origin, const vec3& direction) {
 		for (auto n : neighbor_vertices) {
 			std::cout << "neighbor_vertices " << i << " data: " << n << std::endl;
 			i++;
-		}
-		*/
-
+		}*/
+		
+		std::cout << "Number of halfEdges before deletion: " << (*he->GetHalfEdges()).size() << std::endl;
 		//std::cout << "Number of halfEdges before deletion: " << (*he->GetHalfEdges()).size() << std::endl;
 		//std::cout << "Number of faces before deletion: " << (*he->GetFaces()).size() << std::endl;
 		for (int i = 0; i < neighbor_faces.size(); i++) {
+			std::cout << i << std::endl;
 			he->deleteFace(neighbor_faces[i]);
 		}
 		//std::cout << "Number of faces after deletion: " << (*he->GetFaces()).size() << std::endl;
-		//std::cout << "Number of halfEdges after deletion: " << (*he->GetHalfEdges()).size() << std::endl;
+		std::cout << "Number of halfEdges after deletion: " << (*he->GetHalfEdges()).size() << std::endl;
 
 		//std::cout << "Number of vertices before deletion: " << (*he->GetVertices()).size() << std::endl;
 		he->deleteVector(intersectedVertex);
@@ -1789,12 +1855,13 @@ void vr_mesh_view::vertex_deletion(const vec3& origin, const vec3& direction) {
 			newHalfEdge4->next = newHalfEdge6;
 		}
 		//std::cout << "Number of halfEdges after addition: " << (*he->GetHalfEdges()).size() << std::endl;
-
+		std::cout << "Number of faces after addition: " << (*he->GetFaces()).size() << std::endl;
 		//Building the simple mesh takes a lot of time, around 4-5 seconds
 		build_simple_mesh_from_HE();
-
-		build_aabbtree_from_triangles(he, aabb_tree);
+		have_new_mesh = true;
 		post_redraw();
+		build_aabbtree_from_triangles(he, aabb_tree);
+		
 		std::cout << "Vertex deleted!" << std::endl;
 	}
 	else
@@ -1812,6 +1879,7 @@ void vr_mesh_view::build_simple_mesh_from_HE() {
 	//add vertices to new simple mesh
 	for (auto v : *he->GetVertices()) {
 		vec3 pos = v->position;
+		pos = local_to_global(pos);
 		idx_type pos_idx = M.new_position(pos);
 		indexmap.insert(std::make_pair(v->originalIndex, pos_idx));
 	}
@@ -1838,6 +1906,7 @@ void vr_mesh_view::build_simple_mesh_from_HE() {
 		}
 	}
 	M.compute_vertex_normals();
+	
 	B = M.compute_box();
 	/*
 	std::cout << "nr_face " << M.get_nr_faces() << std::endl;
@@ -1912,7 +1981,7 @@ void vr_mesh_view::update_measurements() {
 
 }
 // updates volume and surface area and shortest diatance to mesh
-void vr_mesh_view::update_measurements(vec3 point) {
+void vr_mesh_view::update_measurements(vec3 point, bool ad) {
 
 	float volume = mesh_utils::volume(he);
 	float surface = mesh_utils::surface(he);
@@ -1921,12 +1990,19 @@ void vr_mesh_view::update_measurements(vec3 point) {
 	//float shortest = mesh_utils::shortest_distance_AD(point, aabb_tree, cl);
 
 	HE_Face* f;
-	float shortest = mesh_utils::shortest_distance(point, he, f, cl);
+	float shortest;
+	if (ad) {
+		shortest = mesh_utils::shortest_distance_AD(point, aabb_tree, cl);
+	}
+	else {
+		shortest = mesh_utils::shortest_distance(point, he, f, cl);
+	}
 
 
-	closestPoint = cl;
+	closestPoint = local_to_global(cl);
 	std::cout << "closest Point: " << cl << std::endl;
 	label_text = "Volume: " + std::to_string(volume) + "\nSurface: " + std::to_string(surface) + "\nshortest distance to mesh \nfrom hmd: " + std::to_string(shortest);
+	std::cout << label_text << std::endl;
 	label_outofdate = true;
 	new_closest_point = true;
 
@@ -1943,7 +2019,8 @@ void vr_mesh_view::drawClosestPoint(cgv::render::context& ctx, vec3 point){
 	sr.set_position_array(ctx, v);
 	sr.set_color_array(ctx, c);
 	sr.set_render_style(srs2);
-	sr.render(ctx, 0, 1);
+	sr.render(ctx, 0, v.size());
+	
 }
 
 

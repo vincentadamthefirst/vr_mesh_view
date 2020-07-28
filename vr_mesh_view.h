@@ -158,6 +158,8 @@ protected:
 	bool show_environment_boxes;
 	bool show_colored_boxes;
 
+	bool show_animationpath = false;
+
 
 	bool destructSmoothingMesh;
 
@@ -228,7 +230,7 @@ protected:
 
 	bool new_closest_point = false;
 
-	vec3 closestPoint;
+	vec3 closestPoint, referenceP;
 
 
 
@@ -303,7 +305,7 @@ public:
 
 	void add_face_to_smoothingMesh(HE_Face* f);
 	void update_measurements();
-	void update_measurements(vec3 point);
+	void update_measurements(vec3 point, bool ad);
 
 	void drawClosestPoint(cgv::render::context& ctx, vec3 point);
 
