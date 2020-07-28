@@ -34,7 +34,7 @@
 #include "intersection.h"
 #include "ray_intersection.h"
 #include "icosphere.h"
-//#include "simple_csg.h"
+#include "simple_csg.h"
 
 
 
