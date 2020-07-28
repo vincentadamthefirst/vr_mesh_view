@@ -13,10 +13,6 @@
 #include <cgv_gl/gl/gltf_support.h>
 #include <cgv/gui/file_dialog.h>
 #include <cgv_gl/box_wire_renderer.h>
-#include "halfedgemesh.h"
-#include "aabb_tree.h"
-#include "triangle.h"
-#include "occuluscontroller.h"
 
 ///@ingroup VR
 ///@{
@@ -30,6 +26,17 @@
 #include <cg_vr/vr_server.h>
 #include <vr_view_interactor.h>
 #include <vr_render_helpers.h>
+
+#include "halfedgemesh.h"
+#include "aabb_tree.h"
+#include "triangle.h"
+#include "occuluscontroller.h"
+#include "intersection.h"
+#include "ray_intersection.h"
+#include "icosphere.h"
+//#include "simple_csg.h"
+
+
 
 class vr_mesh_view :
 	public cgv::base::node,

@@ -1,3 +1,4 @@
+#pragma once
 
 #include "vr_mesh_view.h"
 
@@ -14,10 +15,6 @@
 
 #include <random>
 
-#include "intersection.h"
-#include "ray_intersection.h"
-#include "icosphere.h"
-#include "simple_csg.h"
 
 // typedefs
 typedef cgv::media::mesh::simple_mesh<float> mesh_type;
@@ -294,7 +291,7 @@ vr_mesh_view::vr_mesh_view()
 
 	auto icoMesh = icoSphere.RetrieveMesh();
 
-	auto tmp = SimpleCSG::Subtract(icoMesh, icoMesh);
+	//auto tmp = SimpleCSG::Subtract(icoMesh, icoSphere);
 }
 	
 void vr_mesh_view::stream_help(std::ostream& os) {

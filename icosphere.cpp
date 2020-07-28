@@ -5,6 +5,9 @@ IcoSphere::IcoSphere(float radius, int subdivisions, vec3 center) {
 	// setting the center point for later simple_mesh retrieval
 	centerPoint = center;
 
+	// setting the icosphere radius for later retrieval
+	sphere_radius = radius;
+
 	auto tmpVertList = std::vector<vec3>();
 	auto middlePointIndexCache = std::map<long, int>();
 	auto index = 0;
@@ -137,4 +140,20 @@ mesh_type IcoSphere::RetrieveMesh() {
 	std::cout << "Faces:  \t" << M.get_nr_faces() << "\n" << std::endl;
 
 	return M;
+}
+
+vec3 IcoSphere::GetSphereCenter() {
+	return centerPoint;
+}
+
+float IcoSphere::GetSphereRadius() {
+	return sphere_radius;
+}
+
+std::vector<vec3>& IcoSphere::GetVertices() {
+	return vertices;
+}
+
+std::vector<IcoSphere::TriangleIndices>& IcoSphere::GetTriangles() {
+	return triangles;
 }

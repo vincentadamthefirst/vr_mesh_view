@@ -2,6 +2,7 @@
 #include "halfedgemesh.h"
 #include "aabb_tree.h"
 #include <cgv/media/axis_aligned_box.h>
+
 using namespace cgv::math;
 typedef typename fvec<float, 3> vec3;
 typedef typename fvec<float, 4> vec4;
