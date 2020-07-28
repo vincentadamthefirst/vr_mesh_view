@@ -233,6 +233,8 @@ vr_mesh_view::vr_mesh_view()
 
 	srs.radius = 0.005f;
 
+	srs2.radius = 0.1f;
+
 	// for mesh view
 	translate_vector = vec3(0.0f);
 
@@ -474,10 +476,16 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					
 				}break;
 			}
-			case vr::VR_RIGHT_STICK_RIGHT:
+			case vr::VR_LEFT_BUTTON2:
+			//case vr::VR_RIGHT_STICK_RIGHT:
 			{
 				if (!animationmode) {
-					update_measurements();
+					vec3 p = vec3(vrke.get_state().hmd.pose[9], vrke.get_state().hmd.pose[10], vrke.get_state().hmd.pose[11]);
+
+					std::cout << "reference point for shortest distance: " << p << std::endl;
+
+
+					update_measurements(p);
 				}
 
 				break;
@@ -1088,6 +1096,11 @@ void vr_mesh_view::draw(cgv::render::context& ctx)
 		//drawpath(ctx, path_list_1);
 		drawpath(ctx, defined_path2);
 	}
+	if (new_closest_point) {
+		drawClosestPoint(ctx, closestPoint);
+	}
+
+
 	if (vr_view_ptr) {
 		if ((!shared_texture && camera_tex.is_created()) || (shared_texture && camera_tex_id != -1)) {
 			if (vr_view_ptr->get_rendered_vr_kit() != 0 && vr_view_ptr->get_rendered_vr_kit() == vr_view_ptr->get_current_vr_kit()) {
@@ -1888,20 +1901,52 @@ void vr_mesh_view::add_face_to_smoothingMesh(HE_Face* f) {
 	post_redraw();
 }
 
-
+// updates volume and surface area
 void vr_mesh_view::update_measurements() {
 
 	float volume = mesh_utils::volume(he);
 	float surface = mesh_utils::surface(he);
 
-	vec3 cl;
-	vec3 point = vec3(0, 0, 0);
-	float shortest = mesh_utils::shortest_distance_AD(point, aabb_tree, cl);
-
-	label_text = "Volume: " + std::to_string(volume) + "\nSurface: " + std::to_string(surface) + "\nshortest distance to mesh from head: " + std::to_string(shortest);
+	label_text = "Volume: " + std::to_string(volume) + "\nSurface: " + std::to_string(surface) + "\nshortest distance to mesh \nfrom hmd: " ;
 	label_outofdate = true;
 
 }
+// updates volume and surface area and shortest diatance to mesh
+void vr_mesh_view::update_measurements(vec3 point) {
+
+	float volume = mesh_utils::volume(he);
+	float surface = mesh_utils::surface(he);
+
+	vec3 cl;
+	//float shortest = mesh_utils::shortest_distance_AD(point, aabb_tree, cl);
+
+	HE_Face* f;
+	float shortest = mesh_utils::shortest_distance(point, he, f, cl);
+
+
+	closestPoint = cl;
+	std::cout << "closest Point: " << cl << std::endl;
+	label_text = "Volume: " + std::to_string(volume) + "\nSurface: " + std::to_string(surface) + "\nshortest distance to mesh \nfrom hmd: " + std::to_string(shortest);
+	label_outofdate = true;
+	new_closest_point = true;
+
+}
+
+// draws closest Point 
+void vr_mesh_view::drawClosestPoint(cgv::render::context& ctx, vec3 point){
+	
+	vec3 a = (1, 0, 0);	
+	std::vector<vec3> v,c;
+	c.push_back(a);
+	v.push_back(point);
+	auto& sr = cgv::render::ref_sphere_renderer(ctx);
+	sr.set_position_array(ctx, v);
+	sr.set_color_array(ctx, c);
+	sr.set_render_style(srs2);
+	sr.render(ctx, 0, 1);
+}
+
+
 #include <cgv/base/register.h>
 
 cgv::base::object_registration<vr_mesh_view> vr_test_reg("vr_mesh_view");

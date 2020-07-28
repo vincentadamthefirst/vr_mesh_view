@@ -85,6 +85,8 @@ protected:
 
 	// render style for interaction
 	cgv::render::sphere_render_style srs;
+	cgv::render::sphere_render_style srs2;
+	
 	cgv::render::box_render_style movable_style;
 
 	int nr_cameras;
@@ -224,6 +226,10 @@ protected:
 
 	bool animationmode = false;
 
+	bool new_closest_point = false;
+
+	vec3 closestPoint;
+
 
 
 public:
@@ -297,6 +303,9 @@ public:
 
 	void add_face_to_smoothingMesh(HE_Face* f);
 	void update_measurements();
+	void update_measurements(vec3 point);
+
+	void drawClosestPoint(cgv::render::context& ctx, vec3 point);
 
 };
 
