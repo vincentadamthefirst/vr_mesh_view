@@ -168,14 +168,19 @@ namespace mesh_utils {
         float min_dist = std::numeric_limits<float>::max();
         vec3 p1, p2, p3;
         closestFace;
+
+		vec3 cl;
         
         for (auto face : *newMesh->GetFaces()) {
             getVerticesOfFace(newMesh, face, p1, p2, p3);
             //vec3 middle = (p1 + p2 + p3) / 3.0f;
-            closestPoint = closest_point_on_triangle(point, p1, p2, p3);
-            float distance = (closestPoint - point).length();
+            cl = closest_point_on_triangle(point, p1, p2, p3);
+			vec3 temp = cl - point;
+			//std::cout << "temp mesh_utils: " << temp << std::endl;
+			float distance = temp.length();
             if (distance < min_dist) {
-                min_dist = distance;
+				closestPoint = cl;
+				min_dist = distance;
                 closestFace = face;
             }
 
@@ -207,7 +212,7 @@ namespace mesh_utils {
 
     //77with acceleration structure
     float shortest_distance_AD(vec3 point, AabbTree<triangle> tree, vec3& closestPoint) {
-        AabbTree<triangle>::AabbNode* rootNode = tree.Root();
+		AabbTree<triangle>::AabbNode* rootNode = tree.Root();		
         closest_point_node(point, rootNode, closestPoint);
 
         return (closestPoint - point).length();

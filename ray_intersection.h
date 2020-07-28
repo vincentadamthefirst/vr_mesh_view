@@ -234,7 +234,7 @@ namespace ray_intersection {
 		//using distance debugging on line 217
 		//float blckrn_constant = 0.00025;
 		//using distance debugging on line 217
-		float blckrn_constant = 0.25;
+		float blckrn_constant = 1;
 		//This constant adjusts the required minimum length between the intersection point and the center position of the intersected vertex
 
 		float tmp_distance = 500;
