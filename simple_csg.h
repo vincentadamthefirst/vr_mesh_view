@@ -31,7 +31,7 @@ static class SimpleCSG {
 public:
 	/// Method to subtract two simple_meshes, the resulting mesh will be M1 without M2
 	static mesh_type compute_intersections(mesh_type& M1, HE_Mesh& HE, AabbTree<triangle>& aabb_tree, IcoSphere& IS, CSG_Operation op);
-	/// Method to subtract two simple_meshes, the resulting mesh will be M1 without M2
+	/// Method to subtract an IcoSphere from a simple_mesh, the resulting mesh will be M1 without M2
 	static mesh_type Subtract(mesh_type& M1, IcoSphere& M2);
 
 	/// Method to build new Mesh

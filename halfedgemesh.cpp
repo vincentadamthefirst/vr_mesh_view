@@ -240,7 +240,7 @@ bool HE_Mesh::deleteVector(HE_Vertex* vertex) {
 
 void HE_Mesh::showAllInfo(HE_Mesh * he)
 {
-	//show some informatin to compare the faces and edges before and after deletion
+	//show some information to compare the faces and edges before and after deletion
 	std::vector<HE_Face*>* face_ = he->GetFaces();
 	int i = 0;
 
