@@ -239,7 +239,7 @@ vr_mesh_view::vr_mesh_view()
 	last_kit_handle = 0;
 	connect(cgv::gui::ref_vr_server().on_device_change, this, &vr_mesh_view::on_device_change);
 
-	mesh_scale = 1;
+	mesh_scale = 0.25;
 	mesh_location = dvec3(0, 0, 0);
 	mesh_orientation = dquat(1, 0, 0, 0);
 
@@ -318,9 +318,16 @@ void vr_mesh_view::on_set(void* member_ptr)
 	post_redraw();
 }
 
+void vr_mesh_view::perform_simple_csg(CSG_Operation operation) {
+	auto sphere = IcoSphere(icoSphere_radius, 3, icoSphere_center);
 
-float map(float input, float input_start, float input_end, float output_start, float output_end) {
-	return output_start + ((output_end - output_start) / (input_end - input_start)) * (input - input_start);
+	auto new_he_from_current = generate_from_simple_mesh(M);
+	auto new_mesh = SimpleCSG::compute_intersections(M, *new_he_from_current, aabb_tree, sphere, operation);
+	delete new_he_from_current;
+
+	M = new_mesh;
+	have_new_mesh = true;
+	B = M.compute_box();
 }
 	
 bool vr_mesh_view::handle(cgv::gui::event& e)
@@ -341,8 +348,13 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 		if (vrke.get_action() == cgv::gui::KA_PRESS) {
 			std::cout << "KA_PRESS" << std::endl;
 			switch (vrke.get_key()) {
+			case vr::VR_RIGHT_MENU: { 
+				draw_icoSphere = true;
+				auto pose = vrke.get_state().controller[vrke.get_controller_index()].pose;
+				icoSphere_center = vec3(pose[9], pose[10], pose[11]);
+			}
 			// change of modi
-			case vr::VR_RIGHT_MENU:
+			case vr::VR_RIGHT_BUTTON0: // was MENU, also see KA_RELEASE
 			{				
 				bButtonIsPressed = true;
 				new_closest_point = false;
@@ -596,7 +608,11 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 		}
 		else if (vrke.get_action() == cgv::gui::KA_RELEASE) {
 			switch (vrke.get_key()) {
-			case vr::VR_RIGHT_MENU:
+			case vr::VR_RIGHT_MENU: {
+				perform_simple_csg(CSG_Operation::CSG_DIFFERENCE);
+				draw_icoSphere = false;
+			}
+			case vr::VR_RIGHT_BUTTON0:
 				bButtonIsPressed = false;
 				break;
 			case vr::VR_LEFT_MENU:
@@ -678,6 +694,10 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 			//get controller ray
 			vec3 origin, direction;
 			vrpe.get_state().controller[ci].put_ray(&origin(0), &direction(0));
+			
+			if (ci == 1 && draw_icoSphere) {
+				icoSphere_radius = (origin - icoSphere_center).length();
+			}
 
 			if (state[ci] == IS_GRAB) {
 				// get previous and current intersection point
@@ -696,8 +716,6 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 							}
 							else { defined_path2.push_back(defined_path2[defined_path2.size() - 1]); }
 
-
-
 							// get translation between previous and current intersection point
 							vec3 new_intersection = origin + intersection_offsets[i] * direction;
 							vec3 translation = new_intersection - intersection_points[i];
@@ -709,12 +727,9 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 							defined_path2.push_back(new_position);
 							pathi++;
 
-							//add_translation(translation);
-
 							mat3 dummyRotation;
 							dummyRotation.identity();
 							add_translation(dummyRotation, translation);
-							//M.transform(dummyRotation, translation);
 							M.transform(dummyRotation, translation);
 
 							B = M.compute_box();
@@ -747,43 +762,22 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 								}
 							}						
 						//Rotation and Translation
-						else if(animationmode){
+						else if (animationmode){
 							vec3 last_pos = vrpe.get_last_position();
-
 							vec3 pos = vrpe.get_position();
-
-
-
 							mat3 rotation = vrpe.get_rotation_matrix();
-
-
-
 							vec3 dummyTranslation;
 
 							dummyTranslation.zeros();
-
-
-
 							add_rotation(rotation);
-
 							add_translation(rotation, rotation* (dummyTranslation - last_pos) + pos);
-
-
-
 							M.transform(rotation, rotation* (dummyTranslation - last_pos) + pos);
 
-
-
 							// mesh is animated
-
 							B = M.compute_box();
-
 							have_new_mesh = true;
-
 							post_redraw();
 						}
-						
-						
 					}
 				}
 
@@ -1049,6 +1043,25 @@ void vr_mesh_view::draw_room(cgv::render::context& ctx) {
 		renderer.set_box_array(ctx, environment_boxes);
 		renderer.set_color_array(ctx, box_colors);
 		renderer.render(ctx, 0, environment_boxes.size());
+	}
+}
+
+void vr_mesh_view::draw_csgIcoSphere(cgv::render::context& ctx) {
+	if (draw_icoSphere) {
+		std::vector<vec4> sphere;
+		std::vector<rgb> color;
+		sphere.push_back(vec4(icoSphere_center, icoSphere_radius));
+		color.push_back(rgb(0, 0, 1));
+		cgv::render::sphere_renderer& sr = ref_sphere_renderer(ctx);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		sr.set_render_style(sphere_style);
+		sr.set_color_array(ctx, color);
+		sr.set_sphere_array(ctx, sphere);
+		sr.render(ctx, 0, 1);
+		sphere.clear();
+		color.clear();
+		glDisable(GL_BLEND);
 	}
 }
 
@@ -1329,11 +1342,12 @@ void vr_mesh_view::draw(cgv::render::context& ctx)
 			sphere_style.radius_scale = tmp;
 			glDisable(GL_BLEND);
 		}
-
-		draw_room(ctx);
-
 		//ctx.pop_modelview_matrix();
 	}
+
+	draw_room(ctx);
+
+	draw_csgIcoSphere(ctx);
 
 	if (!r_info.ref_draw_calls().empty())
 		r_info.draw_all(ctx, false, true);
@@ -1384,76 +1398,67 @@ void vr_mesh_view::create_gui() {
 	add_member_control(this, "scale", mesh_scale, "value_slider", "min=0.01;max=20;ticks=true;log=true");
 	align("\b");
 
-		
-	if (begin_tree_node("mesh options", translate_vector, false, "options='w140';align=' '")) {
-		align("\a");
+	align("\a");
+	bool show = begin_tree_node("vertices", show_vertices, false, "options='w=100';align=' '");
+	add_member_control(this, "show", show_vertices, "toggle", "w=42;shortcut='w'", " ");
+	add_member_control(this, "", sphere_style.surface_color, "", "w=42");
+	if (show) {
+		add_decorator("visible part", "heading");
+		add_gui("style", sphere_style);
+		add_decorator("invisible part", "heading");
+		add_gui("style", sphere_hidden_style);
+		end_tree_node(show_vertices);
+	}
+	align("\b");
 
-		bool show = begin_tree_node("vertices", show_vertices, false, "options='w=100';align=' '");
-		add_member_control(this, "show", show_vertices, "toggle", "w=42;shortcut='w'", " ");
-		add_member_control(this, "", sphere_style.surface_color, "", "w=42");
-		if (show) {
-			align("\a");
-			add_decorator("visible part", "heading");
-			add_gui("style", sphere_style);
-			add_decorator("invisible part", "heading");
-			add_gui("style", sphere_hidden_style);
-			align("\b");
-			end_tree_node(show_vertices);
-		}
+	align("\a");
+	show = begin_tree_node("wireframe", show_wireframe, false, "options='w=100';align=' '");
+	add_member_control(this, "show", show_wireframe, "toggle", "w=42;shortcut='w'", " ");
+	add_member_control(this, "", cone_style.surface_color, "", "w=42");
+	if (show) {
+		add_gui("style", cone_style);
+		end_tree_node(show_wireframe);
+	}
+	align("\b");
 
-		show = begin_tree_node("wireframe", show_wireframe, false, "options='w=100';align=' '");
-		add_member_control(this, "show", show_wireframe, "toggle", "w=42;shortcut='w'", " ");
-		add_member_control(this, "", cone_style.surface_color, "", "w=42");
-		if (show) {
-			align("\a");
-			add_gui("style", cone_style);
-			align("\b");
-			end_tree_node(show_wireframe);
-		}
-
-		show = begin_tree_node("bounding_box", show_bounding_box, false, "options='w=100';align=' '");
-		add_member_control(this, "show", show_bounding_box, "toggle", "w=42;shortcut='w'", " ");
+	align("\a");
+	show = begin_tree_node("bounding_box", show_bounding_box, false, "options='w=100';align=' '");
+	add_member_control(this, "show", show_bounding_box, "toggle", "w=42;shortcut='w'", " ");
+	if (show) {
 		end_tree_node(show_bounding_box);
+	}
+	align("\b");
 
-		show = begin_tree_node("surface", show_surface, false, "options='w=100';align=' '");
-		add_member_control(this, "show", show_surface, "toggle", "w=42;shortcut='s'", " ");
-		add_member_control(this, "", surface_color, "", "w=42");
-		if (show) {
-			align("\a");
-			add_member_control(this, "cull mode", cull_mode, "dropdown", "enums='none,back,front'");
-			if (begin_tree_node("color_mapping", color_mapping)) {
-				align("\a");
-				add_gui("color mapping", color_mapping, "bit_field_control",
-					"enums='COLOR_FRONT=1,COLOR_BACK=2,OPACITY_FRONT=4,OPACITY_BACK=8'");
-				align("\b");
-				end_tree_node(color_mapping);
-			}
-			add_member_control(this, "surface color", surface_color);
-			add_member_control(this, "illumination", illumination_mode, "dropdown", "enums='none,one sided,two sided'");
-			// this is how to add a ui for the materials read from an obj material file
-			std::vector<cgv::render::textured_material*>* materials = 0;
-			if (!MI.ref_materials().empty())
-				materials = &MI.ref_materials();
-			else if (!r_info.ref_materials().empty())
-				materials = &r_info.ref_materials();
-			if (materials) {
-				for (unsigned mi = 0; mi < materials->size(); ++mi) {
-					if (begin_tree_node(materials->at(mi)->get_name(), *materials->at(mi))) {
-						align("\a");
-						add_gui("mat", static_cast<cgv::media::illum::textured_surface_material&>(*materials->at(mi)));
-						align("\b");
-						end_tree_node(*materials->at(mi));
-					}
+	align("\a");
+	show = begin_tree_node("surface", show_surface, false, "options='w=100';align=' '");
+	add_member_control(this, "show", show_surface, "toggle", "w=42;shortcut='s'", " ");
+	add_member_control(this, "", surface_color, "", "w=42");
+	if (show) {
+		add_member_control(this, "cull mode", cull_mode, "dropdown", "enums='none,back,front'");
+		if (begin_tree_node("color_mapping", color_mapping)) {
+			add_gui("color mapping", color_mapping, "bit_field_control",
+				"enums='COLOR_FRONT=1,COLOR_BACK=2,OPACITY_FRONT=4,OPACITY_BACK=8'");
+			end_tree_node(color_mapping);
+		}
+		add_member_control(this, "surface color", surface_color);
+		add_member_control(this, "illumination", illumination_mode, "dropdown", "enums='none,one sided,two sided'");
+		// this is how to add a ui for the materials read from an obj material file
+		std::vector<cgv::render::textured_material*>* materials = 0;
+		if (!MI.ref_materials().empty())
+			materials = &MI.ref_materials();
+		else if (!r_info.ref_materials().empty())
+			materials = &r_info.ref_materials();
+		if (materials) {
+			for (unsigned mi = 0; mi < materials->size(); ++mi) {
+				if (begin_tree_node(materials->at(mi)->get_name(), *materials->at(mi))) {
+					add_gui("mat", static_cast<cgv::media::illum::textured_surface_material&>(*materials->at(mi)));
+					end_tree_node(*materials->at(mi));
 				}
 			}
-			align("\b");
-			end_tree_node(show_surface);
 		}
-
-		align("\b");
-
-		end_tree_node(translate_vector);
+		end_tree_node(show_surface);
 	}
+	align("\b");
 }
 
 bool vr_mesh_view::read_main_mesh(const std::string& file_name)

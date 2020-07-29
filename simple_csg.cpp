@@ -9,7 +9,10 @@ mesh_type SimpleCSG::compute_intersections(mesh_type& M1, HE_Mesh& HE, AabbTree<
 	std::map<HE_Edge*, CSG_Intersect_Region> edge_regions;
 	std::map<HE_Edge*, vec3> intersect_points;
 
-	std::map<vec3*, bool> icoPointInMesh;
+	std::map<unsigned, bool> icoPointInMesh;
+
+	std::vector<HE_Edge*> holeBoundaryEdgesMesh;
+	std::map<int, int> holeBoundaryEdgesSphere;
 
 	for (HE_Vertex* v : *HE.GetVertices()) {
 		vec3* p = &(v->position);
@@ -45,18 +48,16 @@ mesh_type SimpleCSG::compute_intersections(mesh_type& M1, HE_Mesh& HE, AabbTree<
 		}
 	}
 
-	for (vec3 p : IS.GetVertices())
-	{
-		ray_intersection::ray ray = ray_intersection::ray(icosphere_center, p - icosphere_center);
-		//ray_intersection::ray tes_ray = ray_intersection::ray(origin, direction);
+	for (auto i = 0; i < IS.GetVertices().size(); i++) {
+		ray_intersection::ray ray = ray_intersection::ray(icosphere_center, IS.GetVertices()[i] - icosphere_center);
 		float t = 0.0;
 		bool intersect = ray_intersection::rayTreeIntersect(ray, aabb_tree, t);
 
 		if (!intersect) {
-			icoPointInMesh.insert(std::make_pair(&p, false));
+			icoPointInMesh.insert(std::make_pair(i, false));
 		}
 		else {
-			icoPointInMesh.insert(std::make_pair(&p, t < 1.0f));
+			icoPointInMesh.insert(std::make_pair(i, t < 1.0f));
 		}
 	}
 
@@ -68,9 +69,9 @@ mesh_type SimpleCSG::compute_intersections(mesh_type& M1, HE_Mesh& HE, AabbTree<
 	bool mesh_out_ico_remain = (op == CSG_Operation::CSG_DIFFERENCE || op == CSG_Operation::CSG_UNION);
 
 	for (IcoSphere::TriangleIndices t : IS.GetTriangles()) { 
-		bool v1_inside = icoPointInMesh.at(&(IS.GetVertices().at(t.v1)));
-		bool v2_inside = icoPointInMesh.at(&(IS.GetVertices().at(t.v2)));
-		bool v3_inside = icoPointInMesh.at(&(IS.GetVertices().at(t.v3)));
+		bool v1_inside = icoPointInMesh.at(t.v1);
+		bool v2_inside = icoPointInMesh.at(t.v2);
+		bool v3_inside = icoPointInMesh.at(t.v3);
 
 		if (v1_inside && v2_inside && v3_inside) {
 			if (ico_in_mesh_remain) {
@@ -83,7 +84,15 @@ mesh_type SimpleCSG::compute_intersections(mesh_type& M1, HE_Mesh& HE, AabbTree<
 			}
 		}
 		else {
-			//TODO do this
+			if (v1_inside && v2_inside) {
+				holeBoundaryEdgesSphere.insert(std::make_pair(t.v1, t.v2));
+			}
+			else if (v2_inside && v3_inside) {
+				holeBoundaryEdgesSphere.insert(std::make_pair(t.v2, t.v3));
+			}
+			else if (v3_inside && v1_inside) {
+				holeBoundaryEdgesSphere.insert(std::make_pair(t.v3, t.v1));
+			}
 		}
 	}
 
@@ -96,22 +105,226 @@ mesh_type SimpleCSG::compute_intersections(mesh_type& M1, HE_Mesh& HE, AabbTree<
 		bool all_outside = true;
 		bool all_inside = true;
 
+		auto count = 0;
+		HE_Edge* outside; 
+
 		do {
+			all_inside = all_inside && edge_regions.at(edge) == CSG_Intersect_Region::INSIDE;
+			all_outside = all_outside && edge_regions.at(edge) == CSG_Intersect_Region::OUTSIDE;
+
+			if (edge_regions.at(edge) == CSG_Intersect_Region::OUTSIDE) {
+				count++;
+				outside = edge;
+			}
 
 			edge = edge->next;
 		} while (edge != originalEdge);
+
+		if (count == 1) {
+			holeBoundaryEdgesMesh.push_back(outside);
+		}
+
+		if (mesh_in_ico_remain && all_inside || mesh_out_ico_remain && all_outside) {
+			mesh_remaining.push_back(f);
+		}
 	}
 
 	//TODO return new built mesh!!!
 	mesh_type R;
-	return R;
-}
 
-mesh_type SimpleCSG::Subtract(mesh_type& M1, IcoSphere& M2) {
-	// the result
-	mesh_type R;
+	std::map<int, int> ico_vertex_index_mapping;
+	std::map<int, int> mesh_vertex_index_mapping;
 
-	// TODO actual code
+	std::map<int, std::vector<int>> holeCloseMapping;
 
+	int first = holeBoundaryEdgesSphere.begin()->first;
+	int end = first;
+	int current = first;
+
+
+	std::vector<int> lastMapping;
+	std::vector<int> pointsWithoutPartner;
+
+	bool started = false;
+
+	// adding the vertices of the sphere
+	for (const auto& triangle : ico_remaining) {
+		R.start_face();
+
+		if (ico_vertex_index_mapping.find(triangle.v1) == ico_vertex_index_mapping.end()) {
+			// not yet mapped
+			ico_vertex_index_mapping.insert(std::make_pair(triangle.v1, R.get_nr_positions()));
+			R.new_corner(R.get_nr_positions());
+			R.new_position(IS.GetVertices()[triangle.v1]);
+		}
+		else {
+			auto index = ico_vertex_index_mapping.at(triangle.v1);
+			R.new_corner(index);
+		}
+
+		if (ico_vertex_index_mapping.find(triangle.v3) == ico_vertex_index_mapping.end()) {
+			// not yet mapped
+			ico_vertex_index_mapping.insert(std::make_pair(triangle.v3, R.get_nr_positions()));
+			R.new_corner(R.get_nr_positions());
+			R.new_position(IS.GetVertices()[triangle.v3]);
+		}
+		else {
+			auto index = ico_vertex_index_mapping.at(triangle.v3);
+			R.new_corner(index);
+		}
+
+		if (ico_vertex_index_mapping.find(triangle.v2) == ico_vertex_index_mapping.end()) {
+			// not yet mapped
+			ico_vertex_index_mapping.insert(std::make_pair(triangle.v2, R.get_nr_positions()));
+			R.new_corner(R.get_nr_positions());
+			R.new_position(IS.GetVertices()[triangle.v2]);
+		}
+		else {
+			auto index = ico_vertex_index_mapping.at(triangle.v2);
+			R.new_corner(index);
+		}
+	}
+
+	// adding the vertices of the mesh
+	for (const auto& face : mesh_remaining) {
+		auto vertices = HE.GetVerticesForFace(face);
+		R.start_face();
+
+		for (const auto& vertex : vertices) {
+			if (mesh_vertex_index_mapping.find(vertex->originalIndex) == mesh_vertex_index_mapping.end()) {
+				// not yet mapped
+				mesh_vertex_index_mapping.insert(std::make_pair(vertex->originalIndex, R.get_nr_positions()));
+				R.new_corner(R.get_nr_positions());
+				R.new_position(HE.GetOriginalIndexMapping()->at(vertex->originalIndex)->position);
+			}
+			else {
+				auto index = mesh_vertex_index_mapping.at(vertex->originalIndex);
+				R.new_corner(index);
+			}
+		}
+	}
+
+	// closing the meshes
+
+	std::cout << "BOUNDARY EDGES SPHERE: " << holeBoundaryEdgesSphere.size() << std::endl;
+	std::cout << "BOUNDARY EDGES MESH:   " << holeBoundaryEdgesMesh.size() << std::endl;
+
+	//break;
+
+	for (unsigned i = 0; i < holeBoundaryEdgesMesh.size(); i++) {
+		auto v1 = holeBoundaryEdgesMesh[i]->origin->position;
+		auto v2 = holeBoundaryEdgesMesh[i]->next->origin->position;
+	
+		auto middle = ((v2 - v1) * .5f) + v1;
+
+		auto minDistance = 99999.9f;
+		int minVertex;
+
+		for (auto entry : holeBoundaryEdgesSphere) {
+			auto vertex = IS.GetVertices()[entry.first];
+			auto distance = (middle - vertex).length();
+			if (distance < minDistance) {
+				minDistance = distance;
+				minVertex = entry.first;
+			}
+		}
+
+		if (holeCloseMapping.find(minVertex) == holeCloseMapping.end()) {
+			holeCloseMapping.insert(std::make_pair(minVertex, std::vector<int>()));
+		}
+
+		auto indexV1 = holeBoundaryEdgesMesh[i]->origin->originalIndex;
+		auto indexV2 = holeBoundaryEdgesMesh[i]->next->origin->originalIndex;
+
+		holeCloseMapping.at(minVertex).push_back(indexV1);
+		holeCloseMapping.at(minVertex).push_back(indexV2);
+
+
+
+		R.start_face();
+
+		//if (mesh_vertex_index_mapping.find(indexV1) == mesh_vertex_index_mapping.end()) {
+		//	// not yet mapped
+		//	mesh_vertex_index_mapping.insert(std::make_pair(indexV1, R.get_nr_positions()));
+		//	R.new_corner(R.get_nr_positions());
+		//	R.new_position(HE.GetOriginalIndexMapping()->at(indexV1)->position);
+		//}
+		//else {
+		//	auto index = mesh_vertex_index_mapping.at(indexV1);
+		//	R.new_corner(index);
+		//}
+
+		//if (mesh_vertex_index_mapping.find(indexV2) == mesh_vertex_index_mapping.end()) {
+		//	// not yet mapped
+		//	mesh_vertex_index_mapping.insert(std::make_pair(indexV2, R.get_nr_positions()));
+		//	R.new_corner(R.get_nr_positions());
+		//	R.new_position(HE.GetOriginalIndexMapping()->at(indexV2)->position);
+		//}
+		//else {
+		//	auto index = mesh_vertex_index_mapping.at(indexV2);
+		//	R.new_corner(index);
+		//}
+
+		//if (ico_vertex_index_mapping.find(minVertex) == ico_vertex_index_mapping.end()) {
+		//	// not yet mapped
+		//	ico_vertex_index_mapping.insert(std::make_pair(minVertex, R.get_nr_positions()));
+		//	R.new_corner(R.get_nr_positions());
+		//	R.new_position(IS.GetVertices()[minVertex]);
+		//}
+		//else {
+		//	auto index = ico_vertex_index_mapping.at(minVertex);
+		//	R.new_corner(index);
+		//}
+
+		R.new_corner(mesh_vertex_index_mapping.at(indexV1));
+		R.new_corner(mesh_vertex_index_mapping.at(indexV2));
+		R.new_corner(ico_vertex_index_mapping.at(minVertex));
+	}
+
+	do {
+		if (started) {
+			pointsWithoutPartner.push_back(current);
+			if (holeCloseMapping.find(current) != holeCloseMapping.end()) {
+				auto currentMapping = holeCloseMapping.at(current);
+				int overlap = -1;
+				for (int v1 : lastMapping) {
+					for (int v2 : currentMapping) {
+						if (v1 == v2) {
+							overlap = v1;
+							break;
+						}
+					}
+				}
+				for (int i = 0; i < pointsWithoutPartner.size() - 1; i++) {
+					R.start_face();
+					R.new_corner(ico_vertex_index_mapping.at(pointsWithoutPartner[i]));
+					R.new_corner(mesh_vertex_index_mapping.at(overlap));
+					R.new_corner(ico_vertex_index_mapping.at(pointsWithoutPartner[i+1]));
+				}
+				pointsWithoutPartner.clear();
+				pointsWithoutPartner.push_back(current);
+				lastMapping = currentMapping;
+			}
+		}
+		else {
+			if (holeCloseMapping.find(current) != holeCloseMapping.end()) {
+				started = true;
+				lastMapping = holeCloseMapping.at(current);
+				first = current;
+				pointsWithoutPartner.push_back(current);
+			}
+		}
+
+		if (current == holeBoundaryEdgesSphere.at(first)) {
+			end = current;
+		}
+
+		current = holeBoundaryEdgesSphere.at(current);
+	} while (current != end);
+
+
+	std::cout << " HERE WE ARE NOW n " << std::endl;
+
+	R.compute_vertex_normals();
 	return R;
 }

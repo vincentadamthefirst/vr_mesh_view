@@ -58,6 +58,8 @@ public:
 	std::vector<HE_Face*>* GetFaces() { return &faces; }
 	/// return reference to the stored boundaryfaces of the mesh
 	std::vector<HE_Face*>* GetBoundaryFaces() { return &boundaryFaces; }
+	/// returns the mapping for the original indices of the stored vertices
+	std::map<unsigned int, HE_Vertex*>* GetOriginalIndexMapping() { return &originalVectorIndices; }
 
 	/// adding a vector and returning a reference to it, checks for duplicates based on originalIndex
 	HE_Vertex* AddVector(unsigned int originalIndex, vec3 position);

@@ -158,6 +158,14 @@ protected:
 	// environment rendering control
 	DecorState decorState;
 
+	// Simple CSG elements
+	// if a sphere should be draw, used for when the user tries to construct an icosphere
+	bool draw_icoSphere = false; 
+	// set when beginning to construct an icosphere
+	vec3 icoSphere_center = vec3(0, 0, 0);
+	// the radius of the icosphere = distance(icoSphere_center, current controller position)
+	float icoSphere_radius = 1.0f;
+
 	bool show_animationpath = false;
 
 	bool destructSmoothingMesh;
@@ -212,8 +220,6 @@ protected:
 	// current font face used
 	cgv::media::font::font_face_ptr label_font_face;
 	cgv::media::font::FontFaceAttributes label_face_type;
-
-
 	
 	mesh_type smoothingMesh;
 	box3 B_smoothing;
@@ -225,8 +231,6 @@ protected:
 	bool new_closest_point = false;
 
 	vec3 closestPoint, referenceP;
-
-
 
 public:
 	void init_cameras(vr::vr_kit* kit_ptr);
@@ -274,6 +278,8 @@ public:
 
 	void visit_tree(AabbTree<triangle>::AabbNode* a);
 
+	/// performs simple csg operation when the IcoSphere button is released
+	void perform_simple_csg(CSG_Operation operation);
 	/// reads a mesh from file
 	bool read_main_mesh(const std::string& file_name);
 	/// loads a new simple_mesh to be edited
@@ -284,7 +290,8 @@ public:
 	void draw_surface(cgv::render::context& ctx, bool opaque_part);
 	/// draws all elements into the scene that are static (not mesh related)
 	void draw_room(cgv::render::context& ctx);
-
+	/// draws a sphere for SimpleCSG (if needed)
+	void draw_csgIcoSphere(cgv::render::context& ctx);
 
 	void draw_surface_2(cgv::render::context& ctx, bool opaque_part);
 

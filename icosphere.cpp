@@ -9,7 +9,7 @@ IcoSphere::IcoSphere(float radius, int subdivisions, vec3 center) {
 	sphere_radius = radius;
 
 	auto tmpVertList = std::vector<vec3>();
-	auto middlePointIndexCache = std::map<long, int>();
+	auto middlePointIndexCache = std::map<int, int>();
 	auto index = 0;
 
 	// creating 12 vertices for the icosahedron
@@ -83,34 +83,41 @@ IcoSphere::IcoSphere(float radius, int subdivisions, vec3 center) {
 
 	triangles = faces;
 
+	for (int i = 0; i < vertices.size(); i++) {
+		vertices[i] += center;
+	}
+
 	// debug output
 	std::cout << "\nGenerated IcoSphere with " << subdivisions << " subdivisions and radius " << radius << std::endl;
 	std::cout << "Resulting Vertices:\t" << vertices.size() << std::endl;
 	std::cout << "Resulting Faces:\t" << faces.size() << "\n" << std::endl;
 }
 
-int IcoSphere::GetMiddlePoint(int p1, int p2, std::vector<vec3>& points, std::map<long, int>& cache, float radius) {
+int CantorPairing2(int k1, int k2) {
+	return ((k1 + k2) * (k1 + k2 + 1) / 2) + k2;
+}
+
+int IcoSphere::GetMiddlePoint(int p1, int p2, std::vector<vec3>& points, std::map<int, int>& cache, float radius) {
 	auto smaller = p1 < p2;
-	long smallerIndex = smaller ? p1 : p2;
-	long greaterIndex = smaller ? p2 : p1;
-	long key = (smallerIndex << 32) + greaterIndex;
+	auto smallerIndex = smaller ? p1 : p2;
+	auto greaterIndex = smaller ? p2 : p1;
+	auto key = CantorPairing2(smallerIndex, greaterIndex);
 
 	// already in cache, return
-	if (cache.count(key)) {
+	if (cache.find(key) != cache.end()) {
 		return cache.at(key);
 	}
 
 	// not in cache, calculate
 	auto point1 = points[p1];
 	auto point2 = points[p2];
-	auto middle = vec3(point1.x() + point2.x() / 2.0f, point1.y() + point2.y() / 2.0f, point1.z() + point2.z() / 2.0f);
+	auto middle = vec3((point1.x() + point2.x()) / 2.0f, (point1.y() + point2.y()) / 2.0f, (point1.z() + point2.z()) / 2.0f);
 
 	auto i = points.size();
 
 	// adding the new point (scale it to be on the sphere)
 	middle.normalize();
-	middle *= radius;
-	points.push_back(middle);
+	points.push_back(middle * radius);
 
 	// store in cache, return index
 	cache.insert(std::make_pair(key, i));

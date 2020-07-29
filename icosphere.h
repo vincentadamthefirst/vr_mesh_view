@@ -53,7 +53,7 @@ public:
 
 private:
 	/// calculates the index of the point in the middle of p1 and p2
-	static int GetMiddlePoint(int p1, int p2, std::vector<vec3>& points, std::map<long, int>& cache, float radius);
+	static int GetMiddlePoint(int p1, int p2, std::vector<vec3>& points, std::map<int, int>& cache, float radius);
 
 	/// List containing all vertices for the mesh
 	std::vector<vec3> vertices;

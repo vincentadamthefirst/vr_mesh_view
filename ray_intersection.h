@@ -99,6 +99,7 @@ namespace ray_intersection {
 			return true;
 		}
 	}
+
 	static HE_Face* getIntersectedFace(ray& r, HE_Mesh* mesh)
 	{
 		vec3 v0, v1, v2;
