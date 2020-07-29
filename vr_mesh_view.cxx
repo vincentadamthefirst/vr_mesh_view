@@ -344,13 +344,13 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 		if (vrke.get_action() == cgv::gui::KA_PRESS) {
 			std::cout << "KA_PRESS" << std::endl;
 			switch (vrke.get_key()) {
-			case vr::VR_RIGHT_MENU: { 
+			case vr::VR_RIGHT_BUTTON0: { 
 				draw_icoSphere = true;
 				auto pose = vrke.get_state().controller[vrke.get_controller_index()].pose;
 				icoSphere_center = vec3(pose[9], pose[10], pose[11]);
 			}
 			// change of modi
-			case vr::VR_RIGHT_BUTTON0: // was MENU, also see KA_RELEASE
+			case vr::VR_RIGHT_MENU: // was MENU, also see KA_RELEASE
 			{				
 				bButtonIsPressed = true;
 				new_closest_point = false;
@@ -583,11 +583,11 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 		}
 		else if (vrke.get_action() == cgv::gui::KA_RELEASE) {
 			switch (vrke.get_key()) {
-			case vr::VR_RIGHT_MENU: {
+			case vr::VR_RIGHT_BUTTON0: {
 				perform_simple_csg(csg_op);
 				draw_icoSphere = false;
 			}
-			case vr::VR_RIGHT_BUTTON0:
+			case vr::VR_RIGHT_MENU:
 				bButtonIsPressed = false;
 				break;
 			case vr::VR_LEFT_MENU:
