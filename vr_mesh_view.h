@@ -239,6 +239,17 @@ protected:
 
 	vec3 closestPoint, referenceP;
 
+	std::vector<vec3> color_list;
+	int pathi = 0;
+
+	bool rightButton2IsPressed = false;
+
+	bool animation_start = false;
+	vec3 mesh_centroid;
+
+	std::vector<vec3> defined_path2;
+	std::vector<vec3> defined_path;
+
 
 
 public:

@@ -14,19 +14,24 @@ typedef cgv::media::mesh::simple_mesh<float> mesh_type;
 typedef mesh_type::idx_type idx_type;
 typedef mesh_type::vec3i vec3i;
 
-namespace mesh_utils {  
+namespace mesh_utils {
+
+    // returns positions of vertices of a specific face
     static void getVerticesOfFace(HE_Mesh* m, HE_Face* face, vec3& p1, vec3& p2, vec3& p3) {
         std::vector<HE_Vertex*> v = m->GetVerticesForFace(face);
         p1 = v[0]->position;
         p2 = v[1]->position;
         p3 = v[2]->position;
     }
+
+    // returns the area of a triangle
     static float triangle_area(vec3 p1, vec3 p2, vec3 p3) {
         vec3 a = p1 - p2;
         vec3 b = p3 - p2;
         return cross(a, b).length() / 2.0f;
     }
 
+    // return the surface area of HE_mesh 
     static float surface(HE_Mesh *newMesh) {
         float result = 0.0f;
         vec3 p1, p2, p3;
@@ -38,10 +43,12 @@ namespace mesh_utils {
         return result;
     }
 
+    // returns the signed volume of a tetrahedron
     static float signed_volume_tetrahedron(vec3 p1, vec3 p2, vec3 p3) {
         return dot(p1, cross(p2, p3)) / 6.0f;
     }
 
+    // returns the volume of the mesh if it is closed otherwise -1
     static float volume(HE_Mesh *newMesh) {
         if (!newMesh->isClosed()) return -1;
         float result = 0;
@@ -64,6 +71,7 @@ namespace mesh_utils {
         else
             return -t.length() / s.length();
     }
+
     // p is projected onto line ab
     static vec3 projection_onto_line(vec3 a, vec3 b, vec3 p) {
         vec3 ap = p - a;
@@ -166,37 +174,34 @@ namespace mesh_utils {
         }
 
     }
-    //brute force with middle of triangle
+
+    //returns shortest ditance, closest point and face -> exact calculation
     static float shortest_distance(const vec3 point, HE_Mesh* newMesh, HE_Face* & closestFace, vec3& closestPoint) {
         float min_dist = std::numeric_limits<float>::max();
         vec3 p1, p2, p3;
-        closestFace;
-
 		vec3 cl;
         
         for (auto face : *newMesh->GetFaces()) {
             getVerticesOfFace(newMesh, face, p1, p2, p3);
-            //vec3 middle = (p1 + p2 + p3) / 3.0f;
             cl = closest_point_on_triangle(point, p1, p2, p3);
 			vec3 temp = cl - point;
-			//std::cout << "temp mesh_utils: " << temp << std::endl;
 			float distance = temp.length();
             if (distance < min_dist) {
 				closestPoint = cl;
 				min_dist = distance;
                 closestFace = face;
             }
-
         }
         return min_dist;
     }
 
-   
-    
-    static void closest_point_node(const vec3 point, AabbTree<triangle>::AabbNode* node, vec3 & closestPoint) {
+    /* approximates the closest point from point p by going through the aabb from top to bottom until triangle is reached,
+    the distance to the bounding box center is used  */
+    static void closest_point_node(const vec3 p, AabbTree<triangle>::AabbNode* node, vec3 & closestPoint) {
+        // if leaf node is reached , calculate the closest point to the specific triangle
         if (node->is_leaf()) {
             std::vector<vec3> t = node->get_triangle();
-            closestPoint = closest_point_on_triangle(point, t.at(0), t.at(1), t.at(2));
+            closestPoint = closest_point_on_triangle(p, t.at(0), t.at(1), t.at(2));
         }
         else {
             AabbTree<triangle>::AabbNode* leftNode = node->left_child();
@@ -204,16 +209,17 @@ namespace mesh_utils {
             vec3 centerLeft = leftNode->get_box().get_center();
             vec3 centerRight = rightNode->get_box().get_center();
 
-            float disR = (centerRight - point).length();
-            float disL = (centerLeft - point).length();
+            float disR = (centerRight - p).length();
+            float disL = (centerLeft - p).length();
+            // go to right or left node depending on which node is closer
             if (disR < disL)
-                closest_point_node(point, rightNode, closestPoint);
+                closest_point_node(p, rightNode, closestPoint);
             else
-                closest_point_node(point, leftNode, closestPoint);
+                closest_point_node(p, leftNode, closestPoint);
         }
     }
 
-    //with acceleration structure
+    //returns shortest distance and closest point by using the acceleration structure ...approximation
     static float shortest_distance_AD(vec3 point, AabbTree<triangle> tree, vec3& closestPoint) {
 		AabbTree<triangle>::AabbNode* rootNode = tree.Root();		
         closest_point_node(point, rootNode, closestPoint);
