@@ -165,6 +165,10 @@ protected:
 	vec3 icoSphere_center = vec3(0, 0, 0);
 	// the radius of the icosphere = distance(icoSphere_center, current controller position)
 	float icoSphere_radius = 1.0f;
+	// the selected CSG Operation
+	CSG_Operation csg_op = CSG_Operation::CSG_UNION;
+	// the selected number of subdivisions
+	int icoSphere_subdivisions = 3;
 
 	bool show_animationpath = false;
 
@@ -231,6 +235,17 @@ protected:
 	bool new_closest_point = false;
 
 	vec3 closestPoint, referenceP;
+
+	std::vector<vec3> color_list;
+	int pathi = 0;
+
+	bool rightButton2IsPressed = false;
+
+	bool animation_start = false;
+	vec3 mesh_centroid;
+
+	std::vector<vec3> defined_path2;
+	std::vector<vec3> defined_path;
 
 public:
 	void init_cameras(vr::vr_kit* kit_ptr);

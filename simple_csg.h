@@ -35,6 +35,10 @@ public:
 	/// Method to perform a CSG operation on two meshes
 	static mesh_type build_mesh(HE_Mesh& HE, std::map<HE_Edge*, CSG_Intersect_Region> edge_regions,
 		std::map<HE_Edge*, vec3> intersect_points, CSG_Operation op);
+
+private:
+	/// Method to add vertices to new Mesh with correct orientation
+	static void create_face(mesh_type& M, int index1, int index2, int index3, bool orientation);
 };
 
 

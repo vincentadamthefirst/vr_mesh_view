@@ -1,6 +1,22 @@
 #include "simple_csg.h"
 
 
+void SimpleCSG::create_face(mesh_type& M, int index1, int index2, int index3, bool orientation) {
+
+	M.start_face();
+	if (orientation) {
+		M.new_corner(index1);
+		M.new_corner(index2);
+		M.new_corner(index3);
+	}
+	else {
+		M.new_corner(index1);
+		M.new_corner(index3);
+		M.new_corner(index2);
+	}
+}
+
+
 mesh_type SimpleCSG::compute_intersections(mesh_type& M1, HE_Mesh& HE, AabbTree<triangle>& aabb_tree, IcoSphere& IS, CSG_Operation op) {
 	vec3 icosphere_center = IS.GetSphereCenter();
 	float radius = IS.GetSphereRadius();
@@ -48,16 +64,28 @@ mesh_type SimpleCSG::compute_intersections(mesh_type& M1, HE_Mesh& HE, AabbTree<
 		}
 	}
 
+	bool centeroutside = false;
+
+	for (int x = -1; x <= 1; x += 2) {
+		for (int y = -1; y <= 1; y += 2) {
+			for (int z = -1; z <= 1; z += 2) {
+				ray_intersection::ray ray = ray_intersection::ray(icosphere_center, vec3(x,y,z));
+				float t = 0.0;
+				centeroutside = centeroutside || !ray_intersection::rayTreeIntersect(ray, aabb_tree, t);
+			}
+		}
+	}
+
 	for (auto i = 0; i < IS.GetVertices().size(); i++) {
 		ray_intersection::ray ray = ray_intersection::ray(icosphere_center, IS.GetVertices()[i] - icosphere_center);
 		float t = 0.0;
 		bool intersect = ray_intersection::rayTreeIntersect(ray, aabb_tree, t);
 
-		if (!intersect) {
+		if (centeroutside == !intersect) {
 			icoPointInMesh.insert(std::make_pair(i, false));
 		}
 		else {
-			icoPointInMesh.insert(std::make_pair(i, t < 1.0f));
+			icoPointInMesh.insert(std::make_pair(i, centeroutside == (t < 1.0f)));
 		}
 	}
 
@@ -83,7 +111,7 @@ mesh_type SimpleCSG::compute_intersections(mesh_type& M1, HE_Mesh& HE, AabbTree<
 				ico_remaining.push_back(t);
 			}
 		}
-		else {
+		else if (ico_in_mesh_remain) {
 			if (v1_inside && v2_inside) {
 				holeBoundaryEdgesSphere.insert(std::make_pair(t.v1, t.v2));
 			}
@@ -91,6 +119,17 @@ mesh_type SimpleCSG::compute_intersections(mesh_type& M1, HE_Mesh& HE, AabbTree<
 				holeBoundaryEdgesSphere.insert(std::make_pair(t.v2, t.v3));
 			}
 			else if (v3_inside && v1_inside) {
+				holeBoundaryEdgesSphere.insert(std::make_pair(t.v3, t.v1));
+			}
+		}
+		else if (ico_out_mesh_remain) {
+			if (!v1_inside && !v2_inside) {
+				holeBoundaryEdgesSphere.insert(std::make_pair(t.v1, t.v2));
+			}
+			else if (!v2_inside && !v3_inside) {
+				holeBoundaryEdgesSphere.insert(std::make_pair(t.v2, t.v3));
+			}
+			else if (!v3_inside && !v1_inside) {
 				holeBoundaryEdgesSphere.insert(std::make_pair(t.v3, t.v1));
 			}
 		}
@@ -106,22 +145,23 @@ mesh_type SimpleCSG::compute_intersections(mesh_type& M1, HE_Mesh& HE, AabbTree<
 		bool all_inside = true;
 
 		auto count = 0;
-		HE_Edge* outside; 
+		HE_Edge* boundary; 
 
 		do {
 			all_inside = all_inside && edge_regions.at(edge) == CSG_Intersect_Region::INSIDE;
 			all_outside = all_outside && edge_regions.at(edge) == CSG_Intersect_Region::OUTSIDE;
 
-			if (edge_regions.at(edge) == CSG_Intersect_Region::OUTSIDE) {
+			if ((mesh_out_ico_remain && edge_regions.at(edge) == CSG_Intersect_Region::OUTSIDE) || 
+				(mesh_in_ico_remain && edge_regions.at(edge) == CSG_Intersect_Region::INSIDE)) {
 				count++;
-				outside = edge;
+				boundary = edge;
 			}
 
 			edge = edge->next;
 		} while (edge != originalEdge);
 
 		if (count == 1) {
-			holeBoundaryEdgesMesh.push_back(outside);
+			holeBoundaryEdgesMesh.push_back(boundary);
 		}
 
 		if (mesh_in_ico_remain && all_inside || mesh_out_ico_remain && all_outside) {
@@ -129,13 +169,20 @@ mesh_type SimpleCSG::compute_intersections(mesh_type& M1, HE_Mesh& HE, AabbTree<
 		}
 	}
 
-	//TODO return new built mesh!!!
+	if (ico_remaining.size() < 1 || mesh_remaining.size() < 1) {
+		return M1;
+	}
+
 	mesh_type R;
 
 	std::map<int, int> ico_vertex_index_mapping;
 	std::map<int, int> mesh_vertex_index_mapping;
 
 	std::map<int, std::vector<int>> holeCloseMapping;
+
+	if (holeBoundaryEdgesSphere.size() == 0) {
+		return M1;
+	}
 
 	int first = holeBoundaryEdgesSphere.begin()->first;
 	int end = first;
@@ -149,46 +196,59 @@ mesh_type SimpleCSG::compute_intersections(mesh_type& M1, HE_Mesh& HE, AabbTree<
 
 	// adding the vertices of the sphere
 	for (const auto& triangle : ico_remaining) {
-		R.start_face();
+		//R.start_face();
+
+		int index1;
+		int index2;
+		int index3;
 
 		if (ico_vertex_index_mapping.find(triangle.v1) == ico_vertex_index_mapping.end()) {
 			// not yet mapped
 			ico_vertex_index_mapping.insert(std::make_pair(triangle.v1, R.get_nr_positions()));
-			R.new_corner(R.get_nr_positions());
+			//R.new_corner(R.get_nr_positions());
+			index1 = R.get_nr_positions();
 			R.new_position(IS.GetVertices()[triangle.v1]);
 		}
 		else {
 			auto index = ico_vertex_index_mapping.at(triangle.v1);
-			R.new_corner(index);
-		}
-
-		if (ico_vertex_index_mapping.find(triangle.v3) == ico_vertex_index_mapping.end()) {
-			// not yet mapped
-			ico_vertex_index_mapping.insert(std::make_pair(triangle.v3, R.get_nr_positions()));
-			R.new_corner(R.get_nr_positions());
-			R.new_position(IS.GetVertices()[triangle.v3]);
-		}
-		else {
-			auto index = ico_vertex_index_mapping.at(triangle.v3);
-			R.new_corner(index);
+			//R.new_corner(index);
+			index1 = index;
 		}
 
 		if (ico_vertex_index_mapping.find(triangle.v2) == ico_vertex_index_mapping.end()) {
 			// not yet mapped
 			ico_vertex_index_mapping.insert(std::make_pair(triangle.v2, R.get_nr_positions()));
-			R.new_corner(R.get_nr_positions());
+			//R.new_corner(R.get_nr_positions());
+			index2 = R.get_nr_positions();
 			R.new_position(IS.GetVertices()[triangle.v2]);
 		}
 		else {
 			auto index = ico_vertex_index_mapping.at(triangle.v2);
-			R.new_corner(index);
+			//R.new_corner(index);
+			index2 = index;
 		}
+
+		if (ico_vertex_index_mapping.find(triangle.v3) == ico_vertex_index_mapping.end()) {
+			// not yet mapped
+			ico_vertex_index_mapping.insert(std::make_pair(triangle.v3, R.get_nr_positions()));
+			//R.new_corner(R.get_nr_positions());
+			index3 = R.get_nr_positions();
+			R.new_position(IS.GetVertices()[triangle.v3]);
+		}
+		else {
+			auto index = ico_vertex_index_mapping.at(triangle.v3);
+			//R.new_corner(index);
+			index3 = index;
+		}
+
+		create_face(R, index1, index2, index3, op != CSG_Operation::CSG_DIFFERENCE);
 	}
 
 	// adding the vertices of the mesh
 	for (const auto& face : mesh_remaining) {
 		auto vertices = HE.GetVerticesForFace(face);
 		R.start_face();
+
 
 		for (const auto& vertex : vertices) {
 			if (mesh_vertex_index_mapping.find(vertex->originalIndex) == mesh_vertex_index_mapping.end()) {
@@ -243,42 +303,42 @@ mesh_type SimpleCSG::compute_intersections(mesh_type& M1, HE_Mesh& HE, AabbTree<
 
 		R.start_face();
 
-		//if (mesh_vertex_index_mapping.find(indexV1) == mesh_vertex_index_mapping.end()) {
-		//	// not yet mapped
-		//	mesh_vertex_index_mapping.insert(std::make_pair(indexV1, R.get_nr_positions()));
-		//	R.new_corner(R.get_nr_positions());
-		//	R.new_position(HE.GetOriginalIndexMapping()->at(indexV1)->position);
-		//}
-		//else {
-		//	auto index = mesh_vertex_index_mapping.at(indexV1);
-		//	R.new_corner(index);
-		//}
+		if (mesh_vertex_index_mapping.find(indexV1) == mesh_vertex_index_mapping.end()) {
+			// not yet mapped
+			mesh_vertex_index_mapping.insert(std::make_pair(indexV1, R.get_nr_positions()));
+			R.new_corner(R.get_nr_positions());
+			R.new_position(HE.GetOriginalIndexMapping()->at(indexV1)->position);
+		}
+		else {
+			auto index = mesh_vertex_index_mapping.at(indexV1);
+			R.new_corner(index);
+		}
 
-		//if (mesh_vertex_index_mapping.find(indexV2) == mesh_vertex_index_mapping.end()) {
-		//	// not yet mapped
-		//	mesh_vertex_index_mapping.insert(std::make_pair(indexV2, R.get_nr_positions()));
-		//	R.new_corner(R.get_nr_positions());
-		//	R.new_position(HE.GetOriginalIndexMapping()->at(indexV2)->position);
-		//}
-		//else {
-		//	auto index = mesh_vertex_index_mapping.at(indexV2);
-		//	R.new_corner(index);
-		//}
+		if (mesh_vertex_index_mapping.find(indexV2) == mesh_vertex_index_mapping.end()) {
+			// not yet mapped
+			mesh_vertex_index_mapping.insert(std::make_pair(indexV2, R.get_nr_positions()));
+			R.new_corner(R.get_nr_positions());
+			R.new_position(HE.GetOriginalIndexMapping()->at(indexV2)->position);
+		}
+		else {
+			auto index = mesh_vertex_index_mapping.at(indexV2);
+			R.new_corner(index);
+		}
 
-		//if (ico_vertex_index_mapping.find(minVertex) == ico_vertex_index_mapping.end()) {
-		//	// not yet mapped
-		//	ico_vertex_index_mapping.insert(std::make_pair(minVertex, R.get_nr_positions()));
-		//	R.new_corner(R.get_nr_positions());
-		//	R.new_position(IS.GetVertices()[minVertex]);
-		//}
-		//else {
-		//	auto index = ico_vertex_index_mapping.at(minVertex);
-		//	R.new_corner(index);
-		//}
+		//R.new_corner(mesh_vertex_index_mapping.at(indexV1));
+		//R.new_corner(mesh_vertex_index_mapping.at(indexV2));
 
-		R.new_corner(mesh_vertex_index_mapping.at(indexV1));
-		R.new_corner(mesh_vertex_index_mapping.at(indexV2));
-		R.new_corner(ico_vertex_index_mapping.at(minVertex));
+		if (ico_vertex_index_mapping.find(minVertex) == ico_vertex_index_mapping.end()) {
+			// not yet mapped
+			ico_vertex_index_mapping.insert(std::make_pair(minVertex, R.get_nr_positions()));
+			R.new_corner(R.get_nr_positions());
+			R.new_position(IS.GetVertices()[minVertex]);
+		}
+		else {
+			auto index = ico_vertex_index_mapping.at(minVertex);
+			R.new_corner(index);
+		}
+		//R.new_corner(ico_vertex_index_mapping.at(minVertex));
 	}
 
 	do {
@@ -296,10 +356,16 @@ mesh_type SimpleCSG::compute_intersections(mesh_type& M1, HE_Mesh& HE, AabbTree<
 					}
 				}
 				for (int i = 0; i < pointsWithoutPartner.size() - 1; i++) {
-					R.start_face();
+					/*R.start_face();
 					R.new_corner(ico_vertex_index_mapping.at(pointsWithoutPartner[i]));
 					R.new_corner(mesh_vertex_index_mapping.at(overlap));
-					R.new_corner(ico_vertex_index_mapping.at(pointsWithoutPartner[i+1]));
+					R.new_corner(ico_vertex_index_mapping.at(pointsWithoutPartner[i+1]));*/
+
+					int index1 = ico_vertex_index_mapping.at(pointsWithoutPartner[i]);
+					int index2 = ico_vertex_index_mapping.at(pointsWithoutPartner[i + 1]);
+					int index3 = mesh_vertex_index_mapping.at(overlap);
+
+					create_face(R, index1, index2, index3, op != CSG_Operation::CSG_DIFFERENCE);
 				}
 				pointsWithoutPartner.clear();
 				pointsWithoutPartner.push_back(current);

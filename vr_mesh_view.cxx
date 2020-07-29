@@ -21,24 +21,6 @@ typedef cgv::media::mesh::simple_mesh<float> mesh_type;
 typedef mesh_type::idx_type idx_type;
 typedef mesh_type::vec3i vec3i;
 
-std::vector<vec3> color_list;
-int pathi = 0;
-
-bool rightButton2IsPressed = false;
-
-bool animation_start = false;
-vec3 mesh_centroid;
-
-std::vector<vec3> defined_path2;
-std::vector<vec3> defined_path;
-struct vec3Compare
-{
-	bool operator()( vec3& lhs,  vec3& rhs)
-	{
-		return rhs[0] < lhs[0];
-	}
-};
-
 void vr_mesh_view::init_cameras(vr::vr_kit* kit_ptr)
 {
 	vr::vr_camera* camera_ptr = kit_ptr->get_camera();
@@ -319,15 +301,29 @@ void vr_mesh_view::on_set(void* member_ptr)
 }
 
 void vr_mesh_view::perform_simple_csg(CSG_Operation operation) {
-	auto sphere = IcoSphere(icoSphere_radius, 3, icoSphere_center);
+	/*std::cout << (int)csg_op << std::endl;
+	std::cout << (int)operation << std::endl;*/
+
+	auto sphere = IcoSphere(icoSphere_radius, icoSphere_subdivisions, icoSphere_center);
 
 	auto new_he_from_current = generate_from_simple_mesh(M);
-	auto new_mesh = SimpleCSG::compute_intersections(M, *new_he_from_current, aabb_tree, sphere, operation);
+	AabbTree<triangle> new_tree_from_current;
+	build_aabbtree_from_triangles(new_he_from_current, new_tree_from_current);
+	auto new_mesh = SimpleCSG::compute_intersections(M, *new_he_from_current, new_tree_from_current, sphere, operation);
 	delete new_he_from_current;
 
 	M = new_mesh;
 	have_new_mesh = true;
 	B = M.compute_box();
+
+	mesh_translation_vector.zeros();
+	mesh_rotation_matrix.identity();
+
+	delete he;
+	he = generate_from_simple_mesh(M);
+	build_aabbtree_from_triangles(he, aabb_tree);
+
+	update_measurements();
 }
 	
 bool vr_mesh_view::handle(cgv::gui::event& e)
@@ -401,18 +397,6 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				post_redraw();
 				break;
 			}
-				
-			//debug function
-			case vr::VR_LEFT_BUTTON1:
-			{
-				auto fs = he->GetFaces();
-				HE_Face* f = *fs->begin();
-				HE_Face* f2 = *(fs->begin()+2);
-				add_face_to_smoothingMesh(f);
-				add_face_to_smoothingMesh(f2);
-				break;
-			}
-
 			case vr::VR_RIGHT_STICK_UP:
 			{
 				if (!animationmode) {
@@ -420,14 +404,80 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					std::cout << "Vertex Deletion activated" << std::endl;
 					vec3 origin, direction;
 					vrke.get_state().controller[1].put_ray(&origin(0), &direction(0));
-
-
-
-
 					vertex_deletion(origin, direction);
 				}
 				break;
 			}
+			case vr::VR_RIGHT_STICK_DOWN:
+			{
+				if (animationmode) {
+					rightButton2IsPressed = true;
+					vec3 go_origin = defined_path[0] - defined_path[pathi];
+					/*add_translation(go_origin);
+					mat3 dummyRotation;
+					dummyRotation.identity();
+					M.transform(dummyRotation, go_origin);*/
+
+
+					mat3 dummyRotation;
+					dummyRotation.identity();
+					add_translation(dummyRotation, go_origin);
+					//M.transform(dummyRotation, translation);
+					M.transform(dummyRotation, go_origin);
+
+
+					B = M.compute_box();
+					have_new_mesh = true;
+					post_redraw();
+					pathi = 0;
+
+				}break;
+			}
+			case vr::VR_RIGHT_STICK_RIGHT:
+			{
+				if (!animationmode) {
+					//vec3 p = vec3(vrke.get_state().hmd.pose[9], vrke.get_state().hmd.pose[10], vrke.get_state().hmd.pose[11]);
+					vec3 origin, direction;
+					vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
+
+					vec3 p = vec3(vrke.get_state().controller[1].pose[9], vrke.get_state().controller[1].pose[10], vrke.get_state().controller[1].pose[11]);
+
+					//vec3 p = vec3(0,2,0);
+
+					referenceP = p;
+
+					p = global_to_local(p);
+					std::cout << "reference point for shortest distance: " << p << std::endl;
+
+
+					update_measurements(p, true);
+				}
+
+				break;
+			}
+			case vr::VR_RIGHT_STICK_LEFT:
+			{
+				if (!animationmode) {
+					//vec3 p = vec3(vrke.get_state().hmd.pose[9], vrke.get_state().hmd.pose[10], vrke.get_state().hmd.pose[11]);
+					vec3 origin, direction;
+					vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
+
+					vec3 p = vec3(vrke.get_state().controller[1].pose[9], vrke.get_state().controller[1].pose[10], vrke.get_state().controller[1].pose[11]);
+
+					//vec3 p = vec3(0,2,0);
+
+					referenceP = p;
+
+					p = global_to_local(p);
+					std::cout << "reference point for shortest distance: " << p << std::endl;
+
+
+					update_measurements(p, false);
+				}
+
+				break;
+			}
+			
 				
 			case vr::VR_LEFT_STICK_LEFT:
 			//case vr::VR_RIGHT_BUTTON1:
@@ -477,83 +527,11 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					else
 						std::cout << "no intersecting face" << std::endl;
 				}break;
-			}
-				
-			case vr::VR_RIGHT_STICK_DOWN:
-			{
-				if (animationmode) {
-					rightButton2IsPressed = true;
-					vec3 go_origin = defined_path[0] - defined_path[pathi];
-					/*add_translation(go_origin);
-					mat3 dummyRotation;
-					dummyRotation.identity();
-					M.transform(dummyRotation, go_origin);*/
-
-
-					mat3 dummyRotation;
-					dummyRotation.identity();
-					add_translation(dummyRotation, go_origin);
-					//M.transform(dummyRotation, translation);
-					M.transform(dummyRotation, go_origin);
-
-
-					B = M.compute_box();
-					have_new_mesh = true;
-					post_redraw();
-					pathi = 0;
-					
-				}break;
-			}
-			//case vr::VR_LEFT_BUTTON2:
-			case vr::VR_RIGHT_STICK_RIGHT:
-			{
-				if (!animationmode) {
-					//vec3 p = vec3(vrke.get_state().hmd.pose[9], vrke.get_state().hmd.pose[10], vrke.get_state().hmd.pose[11]);
-					vec3 origin, direction;
-					vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
-
-					vec3 p = vec3(vrke.get_state().controller[1].pose[9], vrke.get_state().controller[1].pose[10], vrke.get_state().controller[1].pose[11]);
-
-					//vec3 p = vec3(0,2,0);
-
-					referenceP = p;
-
-					p = global_to_local(p);
-					std::cout << "reference point for shortest distance: " << p << std::endl;
-					
-
-					update_measurements(p,true);
-				}
-
-				break;
-			}
-			case vr::VR_RIGHT_STICK_LEFT:
-			{
-				if (!animationmode) {
-					//vec3 p = vec3(vrke.get_state().hmd.pose[9], vrke.get_state().hmd.pose[10], vrke.get_state().hmd.pose[11]);
-					vec3 origin, direction;
-					vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
-
-					vec3 p = vec3(vrke.get_state().controller[1].pose[9], vrke.get_state().controller[1].pose[10], vrke.get_state().controller[1].pose[11]);
-
-					//vec3 p = vec3(0,2,0);
-
-					referenceP = p;
-
-					p = global_to_local(p);
-					std::cout << "reference point for shortest distance: " << p << std::endl;
-
-
-					update_measurements(p, false);
-				}
-
-				break;
-			}
-			//apply laplacian smoothing			
+			}					
 			case vr::VR_LEFT_STICK_RIGHT:
-			//case vr::VR_RIGHT_BUTTON1:
 			{
 				if (!animationmode) {
+					//apply laplacian smoothing		
 					// if there are no faces selected for smoothing all vertices are smoothed otherwise just the selected points
 					if (smoothingpoints.size() == 0) {
 						std::cout << "smoothing whole mesh" << std::endl;
@@ -569,7 +547,6 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					
 				}break;
 			}
-			//case vr::VR_RIGHT_BUTTON2:
 			case vr::VR_LEFT_STICK_DOWN:
 			{
 				if (!animationmode) {
@@ -583,21 +560,19 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					vec3 new_point_on_ray = global_to_local(point_on_ray);
 					vec3 new_dir = new_point_on_ray - new_origin;
 					ray_intersection::ray tes_ray = ray_intersection::ray(new_origin, new_dir);
-					//ray_intersection::ray tes_ray = ray_intersection::ray(origin, direction);
 					float t = 0.0;
 					bool tt = ray_intersection::rayTreeIntersect(tes_ray, aabb_tree, t);
-					std::cout << tt << std::endl;
+					
 					// if there is an intesection with the mesh
 					if (tt) {
 						HE_Face* face = ray_intersection::getIntersectedFace(tes_ray, he);
-
 						std::vector<HE_Vertex*> vertices_of_face = he->GetVerticesForFace(face);
 						for (int i = 0; i < 3; ++i) {
 							//adds the vertices of the face to vector of points to smooth if they are not already in there
 							if (std::find(smoothingpoints.begin(), smoothingpoints.end(), vertices_of_face[i]) == smoothingpoints.end())
 								smoothingpoints.push_back(vertices_of_face[i]);
 						}
-						// add the face to the the smoothingMesh(a simple_mesh)
+						// add the face to the the smoothingMesh(a simple_mesh) for rendering
 						add_face_to_smoothingMesh(face);
 					}
 				}
@@ -609,7 +584,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 		else if (vrke.get_action() == cgv::gui::KA_RELEASE) {
 			switch (vrke.get_key()) {
 			case vr::VR_RIGHT_MENU: {
-				perform_simple_csg(CSG_Operation::CSG_DIFFERENCE);
+				perform_simple_csg(csg_op);
 				draw_icoSphere = false;
 			}
 			case vr::VR_RIGHT_BUTTON0:
@@ -1395,8 +1370,17 @@ void vr_mesh_view::create_gui() {
 		"save=true;save_title='save obj file';w=140");
 
 	align("\a");
-	add_member_control(this, "scale", mesh_scale, "value_slider", "min=0.01;max=20;ticks=true;log=true");
+	add_member_control(this, "scale", mesh_scale, "value_slider", "min=0.01;max=20;ticks=true;log=false");
 	align("\b");
+
+	align("\a");
+	add_member_control(this, "CSG operation", csg_op, "dropdown", "enums='UNION,SUBTRACTION,INTERSECTION'");
+	align("\b");
+
+	align("\a");
+	add_member_control(this, "IcoSphere subdivisions", icoSphere_subdivisions, "value_slider", "min=0;max=5;ticks=true;log=false");
+	align("\b");
+
 
 	align("\a");
 	bool show = begin_tree_node("vertices", show_vertices, false, "options='w=100';align=' '");
@@ -1979,15 +1963,13 @@ void vr_mesh_view::update_measurements() {
 	label_outofdate = true;
 
 }
-// updates volume and surface area and shortest diatance to mesh
+
+// updates volume and surface area and shortest diatance to mesh, ad == true approximation of closest point with AD otherwise exact calculation
 void vr_mesh_view::update_measurements(vec3 point, bool ad) {
 
 	float volume = mesh_utils::volume(he);
 	float surface = mesh_utils::surface(he);
-
 	vec3 cl;
-	//float shortest = mesh_utils::shortest_distance_AD(point, aabb_tree, cl);
-
 	HE_Face* f;
 	float shortest;
 	if (ad) {
@@ -1997,9 +1979,7 @@ void vr_mesh_view::update_measurements(vec3 point, bool ad) {
 		shortest = mesh_utils::shortest_distance(point, he, f, cl);
 	}
 
-
 	closestPoint = local_to_global(cl);
-	std::cout << "closest Point: " << cl << std::endl;
 	label_text = "Volume: " + std::to_string(volume) + "\nSurface: " + std::to_string(surface) + "\nshortest distance to mesh \nfrom hmd: " + std::to_string(shortest);
 	std::cout << label_text << std::endl;
 	label_outofdate = true;
@@ -2007,7 +1987,7 @@ void vr_mesh_view::update_measurements(vec3 point, bool ad) {
 
 }
 
-// draws closest Point 
+// draws closest Point as a black sphere
 void vr_mesh_view::drawClosestPoint(cgv::render::context& ctx, vec3 point){
 	
 	vec3 a = (1, 0, 0);	
