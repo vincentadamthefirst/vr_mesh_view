@@ -27,16 +27,7 @@
 #include <vr_view_interactor.h>
 #include <vr_render_helpers.h>
 
-//#include "halfedgemesh.h"
-//#include "aabb_tree.h"
-//#include "triangle.h"
-#include "occuluscontroller.h"
-//#include "intersection.h"
-//#include "ray_intersection.h"
-//#include "icosphere.h"
 #include "simple_csg.h"
-
-
 
 class vr_mesh_view :
 	public cgv::base::node,
@@ -54,6 +45,12 @@ protected:
 		IS_NONE,
 		IS_OVER,
 		IS_GRAB
+	};
+
+	/// The different possibilities to decorate the room, NONE = empty void, ROOM_TABLE = room with some objects
+	/// ROOM_BOXES = room with floor and colored boxes around, ROOM_WALLS = room with floor, walls and ceiling
+	enum DecorState {
+		NONE = 0, ROOM_TABLE, ROOM_BOXES, ROOM_WALLS
 	};
 
 	// rendering style for boxes
@@ -158,15 +155,10 @@ protected:
 	bool show_vertices;
 	bool show_surface;
 
-	// environment rendering controls
-	bool show_floor;
-	bool show_walls;
-	bool show_ceiling;
-	bool show_environment_boxes;
-	bool show_colored_boxes;
+	// environment rendering control
+	DecorState decorState;
 
 	bool show_animationpath = false;
-
 
 	bool destructSmoothingMesh;
 
@@ -194,15 +186,10 @@ protected:
 
 	HE_Vertex* intersectedVertex;
 
-
-
 	// positions only get written when y and b key (oculus) are held
 	vec3 rightControllerPosition;
 	vec3 leftControllerPosition;
 	bool aniButton1IsPressed = false;
-	OcculusController leftController;
-	OcculusController rightController;
-
 
 	std::vector<HE_Vertex*> smoothingpoints;
 	const std::string mesheditingmode_text = "Mesh Editing Mode \nButtons:\nMenu: Change Mode\nL-Stick L: Tesselation\nL-Stick U: Vertex Manipulation\nL-Stick D: Select Smoothing Face\nL-Stick R: Apply Smoothing\n\nR-Stick U: Vertex Deletion\nR-Stick R: Recalculate Measurements\n";
@@ -253,11 +240,12 @@ public:
 	/// register on device change events
 	void on_device_change(void* kit_handle, bool attach);
 	/// construct boxes that represent a room of dimensions w,d,h and wall width W
-	void construct_room(float w, float d, float h, float W);
+	void construct_room(DecorState decorState, float w, float d, float h, float W);
 	/// construct boxes for environment
-	void construct_environment(float s, float ew, float ed, float w, float d, float h);
+	void construct_environment(DecorState decorState, float s, float ew, float ed, float w, float d, float h);
 	/// construct a scene with a table
-	void build_scene(float w, float d, float h, float W, float tw, float td, float th, float tW);
+	void build_scene(DecorState decorState, float w, float d, float h, float W);
+
 public:
 	vr_mesh_view();
 
@@ -282,13 +270,22 @@ public:
 	void create_gui();
 
 public:
-	bool read_mesh(const std::string& file_name);
-
-	HE_Mesh* generate_from_simple_mesh(mesh_type M);
+	
 
 	void visit_tree(AabbTree<triangle>::AabbNode* a);
 
+	/// reads a mesh from file
+	bool read_main_mesh(const std::string& file_name);
+	/// loads a new simple_mesh to be edited
+	bool read_decor_meshes(const std::string& base_path);
+	/// generates a HE_Mesh from a simple mesh
+	HE_Mesh* generate_from_simple_mesh(mesh_type M);
+	/// draws the surface of the main mesh
 	void draw_surface(cgv::render::context& ctx, bool opaque_part);
+	/// draws all elements into the scene that are static (not mesh related)
+	void draw_room(cgv::render::context& ctx);
+
+
 	void draw_surface_2(cgv::render::context& ctx, bool opaque_part);
 
 	void add_translation(vec3 v);
@@ -298,8 +295,6 @@ public:
 	void add_rotation(mat3 rotation);
 	vec3 global_to_local(vec3 pos);
 	vec3 local_to_global(vec3 pos);
-
-	void scaleMesh(mesh_type& M, float scale);
 
 	void applySmoothing();
 

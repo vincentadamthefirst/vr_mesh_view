@@ -38,6 +38,7 @@ struct vec3Compare
 		return rhs[0] < lhs[0];
 	}
 };
+
 void vr_mesh_view::init_cameras(vr::vr_kit* kit_ptr)
 {
 	vr::vr_camera* camera_ptr = kit_ptr->get_camera();
@@ -146,58 +147,72 @@ void vr_mesh_view::on_device_change(void* kit_handle, bool attach)
 }
 
 /// construct boxes that represent a room of dimensions w,d,h and wall width W
-void vr_mesh_view::construct_room(float w, float d, float h, float W) {
-	// construct floor
-	if (show_floor) {
+void vr_mesh_view::construct_room(DecorState decorState, float w, float d, float h, float W) {
+	rgb color = cgv::media::color<float, cgv::media::HLS>(61.0f / 255.0f, 50.0f / 255.0f, 61.0f / 255.0f);
+	if (decorState != DecorState::NONE) {
+		// construct floor
 		environment_boxes.push_back(box3(vec3(-0.5f * w, -W, -0.5f * d), vec3(0.5f * w, 0, 0.5f * d)));
-		box_colors.push_back(rgb(0.2f, 0.2f, 0.2f));
+		//box_colors.push_back(rgb(0.2f, 0.2f, 0.2f));
+		box_colors.push_back(color);
 	}
-	if(show_walls) {
+	if (decorState == DecorState::ROOM_WALLS || decorState == DecorState::ROOM_TABLE) {
 		// construct walls
 		environment_boxes.push_back(box3(vec3(-0.5f*w, -W, -0.5f*d - W), vec3(0.5f*w, h, -0.5f*d)));
-		box_colors.push_back(rgb(0.8f, 0.5f, 0.5f));
+		//box_colors.push_back(rgb(0.8f, 0.5f, 0.5f));
+		box_colors.push_back(color);
 		environment_boxes.push_back(box3(vec3(-0.5f*w, -W, 0.5f*d), vec3(0.5f*w, h, 0.5f*d + W)));
-		box_colors.push_back(rgb(0.8f, 0.5f, 0.5f));
-
+		//box_colors.push_back(rgb(0.8f, 0.5f, 0.5f));
+		box_colors.push_back(color);
 		environment_boxes.push_back(box3(vec3(0.5f*w, -W, -0.5f*d - W), vec3(0.5f*w + W, h, 0.5f*d + W)));
-		box_colors.push_back(rgb(0.5f, 0.8f, 0.5f));
+		//box_colors.push_back(rgb(0.5f, 0.8f, 0.5f));
+		box_colors.push_back(color);
 	}
-	if(show_ceiling) {
+	if (decorState == DecorState::ROOM_WALLS || decorState == DecorState::ROOM_TABLE) {
 		// construct ceiling
 		environment_boxes.push_back(box3(vec3(-0.5f*w - W, h, -0.5f*d - W), vec3(0.5f*w + W, h + W, 0.5f*d + W)));
-		box_colors.push_back(rgb(0.5f, 0.5f, 0.8f));
+		//box_colors.push_back(rgb(0.5f, 0.5f, 0.8f));
+		box_colors.push_back(color);
 	}
 }
 
 /// construct boxes for environment
-void vr_mesh_view::construct_environment(float s, float ew, float ed, float w, float d, float h) {
-	if (!show_colored_boxes) return;
+void vr_mesh_view::construct_environment(DecorState decorState, float s, float ew, float ed, float w, float d, float h) {
+	
+	if (decorState == DecorState::ROOM_BOXES) {
+		// placing randomly colored boxes around the outside of the scene
 
-	std::default_random_engine generator;
-	std::uniform_real_distribution<float> distribution(0, 1);
-	unsigned n = unsigned(ew / s);
-	unsigned m = unsigned(ed / s);
-	float ox = 0.5f*float(n)*s;
-	float oz = 0.5f*float(m)*s;
-	for(unsigned i = 0; i < n; ++i) {
-		float x = i * s - ox;
-		for(unsigned j = 0; j < m; ++j) {
-			float z = j * s - oz;
-			if(fabsf(x) < 0.5f*w && fabsf(x + s) < 0.5f*w && fabsf(z) < 0.5f*d && fabsf(z + s) < 0.5f*d)
-				continue;
-			float h = 0.2f*(std::max(abs(x) - 0.5f*w, 0.0f) + std::max(abs(z) - 0.5f*d, 0.0f))*distribution(generator) + 0.1f;
-			environment_boxes.push_back(box3(vec3(x, 0.0f, z), vec3(x + s, h, z + s)));
-			rgb color = cgv::media::color<float, cgv::media::HLS>(distribution(generator), 0.1f*distribution(generator) + 0.15f, 0.3f);
-			box_colors.push_back(color);
+		std::default_random_engine generator;
+		std::uniform_real_distribution<float> distribution(0, 1);
+		unsigned n = unsigned(ew / s);
+		unsigned m = unsigned(ed / s);
+		float ox = 0.5f * float(n) * s;
+		float oz = 0.5f * float(m) * s;
+		for (unsigned i = 0; i < n; ++i) {
+			float x = i * s - ox;
+			for (unsigned j = 0; j < m; ++j) {
+				float z = j * s - oz;
+				if (fabsf(x) < 0.5f * w && fabsf(x + s) < 0.5f * w && fabsf(z) < 0.5f * d && fabsf(z + s) < 0.5f * d)
+					continue;
+				float h = 0.2f * (std::max(abs(x) - 0.5f * w, 0.0f) + std::max(abs(z) - 0.5f * d, 0.0f)) * distribution(generator) + 0.1f;
+				environment_boxes.push_back(box3(vec3(x, 0.0f, z), vec3(x + s, h, z + s)));
+				rgb color = cgv::media::color<float, cgv::media::HLS>(distribution(generator), 0.1f * distribution(generator) + 0.15f, 0.3f);
+				box_colors.push_back(color);
+			}
 		}
+	}
+	else if (decorState == DecorState::ROOM_TABLE) {
+		// placing chairs, tables and other decor
+
+
+
 	}
 }
 
 /// construct a scene with a table
-void vr_mesh_view::build_scene(float w, float d, float h, float W, float tw, float td, float th, float tW)
+void vr_mesh_view::build_scene(DecorState decorState, float w, float d, float h, float W)
 {
-	construct_room(w, d, h, W);
-	construct_environment(0.3f, 3 * w, 3 * d, w, d, h);
+	construct_room(decorState, w, d, h, W);
+	construct_environment(decorState, 0.3f, 3 * w, 3 * d, w, d, h);
 }
 
 vr_mesh_view::vr_mesh_view() 
@@ -260,19 +275,12 @@ vr_mesh_view::vr_mesh_view()
 	// if a new mesh has been loaded
 	have_new_mesh = false;
 
-
-
 	destructSmoothingMesh = false;
 
-
-	// ONLY in code changeable values
-	show_floor = true;
-	show_walls = false;
-	show_ceiling = false;
-	show_environment_boxes = true;
-	show_colored_boxes = true;
-	build_scene(5, 7, 3, 0.2f, 1.6f, 0.8f, 0.7f, 0.03f);
-
+	// the general layout of the scene
+	decorState = DecorState::ROOM_BOXES;
+	// values: decorState, width, length, height, wall width
+	build_scene(decorState, 5, 7, 3, 0.2f);
 
 	label_outofdate = true;
 	label_text = "Surface:\nVolume:";
@@ -282,16 +290,6 @@ vr_mesh_view::vr_mesh_view()
 	label_resolution = 256;
 	label_size = 20.0f;
 	label_color = rgb(1, 1, 1);
-
-
-	// DEBUG test for icosphere generation (will be removed)
-	// TODO remove
-
-	auto icoSphere = IcoSphere();
-
-	auto icoMesh = icoSphere.RetrieveMesh();
-
-	auto tmp = SimpleCSG::Subtract(icoMesh, icoSphere);
 }
 	
 void vr_mesh_view::stream_help(std::ostream& os) {
@@ -305,7 +303,7 @@ void vr_mesh_view::on_set(void* member_ptr)
 			M.write(file_name);
 		}
 		else {
-			if (read_mesh(file_name)) {
+			if (read_main_mesh(file_name)) {
 				have_new_mesh = true;
 				// destruct/clear data from previous loaded mesh
 				smoothingpoints.clear();
@@ -1044,6 +1042,16 @@ void vr_mesh_view::init_frame(cgv::render::context& ctx)
 	}
 }
 
+void vr_mesh_view::draw_room(cgv::render::context& ctx) {
+	// draw environment boxes (if list isnt empty)
+	if (!environment_boxes.empty() && decorState != DecorState::NONE) {
+		cgv::render::box_renderer& renderer = cgv::render::ref_box_renderer(ctx);
+		renderer.set_box_array(ctx, environment_boxes);
+		renderer.set_color_array(ctx, box_colors);
+		renderer.render(ctx, 0, environment_boxes.size());
+	}
+}
+
 void vr_mesh_view::draw_surface(cgv::render::context& ctx, bool opaque_part)
 {
 	// remember current culling setting
@@ -1083,6 +1091,7 @@ void vr_mesh_view::draw_surface(cgv::render::context& ctx, bool opaque_part)
 		glDisable(GL_CULL_FACE);
 	glCullFace(cull_face);
 }
+
 void vr_mesh_view::draw_surface_2(cgv::render::context& ctx, bool opaque_part) {
 
 	// remember current culling setting
@@ -1321,19 +1330,9 @@ void vr_mesh_view::draw(cgv::render::context& ctx)
 			glDisable(GL_BLEND);
 		}
 
+		draw_room(ctx);
+
 		//ctx.pop_modelview_matrix();
-	}
-
-	
-
-
-	// draw environment (if list isnt empty)
-	if (!environment_boxes.empty() && show_environment_boxes) {
-		cgv::render::box_renderer& renderer = cgv::render::ref_box_renderer(ctx);
-		//renderer.set_render_style(style);
-		renderer.set_box_array(ctx, environment_boxes);
-		renderer.set_color_array(ctx, box_colors);
-		renderer.render(ctx, 0, environment_boxes.size());
 	}
 
 	if (!r_info.ref_draw_calls().empty())
@@ -1451,12 +1450,13 @@ void vr_mesh_view::create_gui() {
 			end_tree_node(show_surface);
 		}
 
+		align("\b");
 
 		end_tree_node(translate_vector);
 	}
 }
 
-bool vr_mesh_view::read_mesh(const std::string& file_name)
+bool vr_mesh_view::read_main_mesh(const std::string& file_name)
 {
 	mesh_type tmp;
 	size_t Vector_count = 0;
@@ -1491,6 +1491,13 @@ bool vr_mesh_view::read_mesh(const std::string& file_name)
 		scale_matrix *= mesh_scale;
 		M.transform(scale_matrix, mesh_translation_vector);
 
+		// offset to the mesh to be on top of the table if decorState == ROOM_RABLE
+		if (decorState == ROOM_TABLE) {
+			scale_matrix.identity();
+			vec3 offset(0, 1, 0); // move mesh 1 unit up
+			M.transform(scale_matrix, offset);
+		}
+
 		//create HE_MESH and build bounding box
 		he = generate_from_simple_mesh(M);
 		build_aabbtree_from_triangles(he, aabb_tree);
@@ -1505,10 +1512,6 @@ bool vr_mesh_view::read_mesh(const std::string& file_name)
 
 	cone_style.radius = 0.5f * sphere_style.radius;
 	return true;
-}
-
-void vr_mesh_view::scaleMesh(mesh_type& M, float scale) {
-
 }
 
 HE_Mesh* vr_mesh_view::generate_from_simple_mesh(mesh_type M) {
