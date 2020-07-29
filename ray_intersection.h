@@ -12,7 +12,8 @@
 
 typedef typename cgv::math::fvec<float, 3> vec3;
 typedef typename cgv::media::axis_aligned_box<float, 3> box3;
-
+//This class is composed of useful methods related to ray intersection
+//All ray intersection methods are based on ray-triangle intersection
 namespace ray_intersection {
 	struct ray {
 		vec3 origin;
@@ -20,6 +21,8 @@ namespace ray_intersection {
 
 		ray(vec3 org, vec3 dir) : origin(org), direction(dir) {};
 	};
+
+	//Checks if the point p inside the triangle defined by 3 vertices
 	static bool isInsideTriangle(const vec3& v0, const vec3& v1, const vec3& v2, const vec3& p)
 	{
 		vec3 edge0 = v1 - v0;
@@ -34,7 +37,8 @@ namespace ray_intersection {
 			dot(N, cross(edge2, C2)) > 0) return true; // P is inside the triangle 
 		return false;
 	}
-	//t value gives the distance multiplier 
+
+	//Checks if the ray-triangle intersection, also returns t value as the distance multiplier
 	static bool rayTriangleIntersect(const ray& r, const vec3& v0, const vec3& v1, const vec3& v2, float& t)
 	{
 		vec3 d = r.direction;
@@ -66,6 +70,7 @@ namespace ray_intersection {
 		
 	}
 	
+	//Checks if the ray-face intersection in a given mesh, returns t as the distance multiplier
 	static bool rayFaceIntersect(ray& r, HE_Mesh* mesh, HE_Face* face, float& t)
 	{
 		vec3 v0, v1, v2;
@@ -77,11 +82,12 @@ namespace ray_intersection {
 		return false;
 	}
 	
+	//Checks if the ray-mesh intersection and returns t as the distance multiplier
 	static bool rayMeshIntersect(ray& r, HE_Mesh* mesh, float& t)
 	{
 		vec3 v0, v1, v2;
 		bool intersect = false;
-		float temp_t = 1000000;
+		float temp_t = std::numeric_limits<float>::max();
 
 		for (auto face : *mesh->GetFaces()) {
 			if (rayFaceIntersect(r, mesh, face, t))
@@ -100,11 +106,12 @@ namespace ray_intersection {
 		}
 	}
 
+	//Returns the intersected face in a given mesh with given ray
 	static HE_Face* getIntersectedFace(ray& r, HE_Mesh* mesh)
 	{
 		vec3 v0, v1, v2;
 		bool intersect = false;
-		float temp_t = std::numeric_limits<float>::max();//1000000;
+		float temp_t = std::numeric_limits<float>::max();
 		float t = 0;
 
 		HE_Face* temp_face = new HE_Face();
@@ -128,7 +135,7 @@ namespace ray_intersection {
 			return temp_face;
 		}
 	}
-	
+	//Returns the t as distance multiplier with a given intersected face
 	static bool getIntersectedFace_with_t(ray& r, HE_Mesh* mesh, float& main_t, HE_Face*& f)
 	{
 		vec3 v0, v1, v2;
@@ -158,6 +165,7 @@ namespace ray_intersection {
 		}
 	}
 	
+	//Checks the ray-box intersection
 	static bool rayBoxIntersect(const ray& r, const box3& b)
 	{
 		vec3 max_pnt = b.get_max_pnt();
@@ -201,7 +209,7 @@ namespace ray_intersection {
 		return true;
 	}
 
-	
+	//Checks the ray-node intersection
 	static void rayNodeIntersect(const ray& r, AabbTree<triangle>::AabbNode* node, float& t)
 	{
 		box3 box = node->get_box();
@@ -224,6 +232,7 @@ namespace ray_intersection {
 		t = temp;
 	}
 	
+	//Checks the ray-AaBb tree intersection, also returns t as the distance multiplier
 	static bool rayTreeIntersect(const ray& r, AabbTree<triangle>& tree, float& t)
 	{
 		AabbTree<triangle>::AabbNode* rootNode = tree.Root();
@@ -236,9 +245,8 @@ namespace ray_intersection {
 	static bool vertexIntersection(const vec3& intersectPoint, const std::vector<HE_Vertex*> vertices, HE_Vertex*& intersectedVertex)
 	{
 		//This constant might need a change depending on the vertice allignment of loaded simple mesh. Precision of vertex intersection can be obtained easily
-		//using distance debugging on line 217
+		//using distance debugging on line 264
 		//float blckrn_constant = 0.00025;
-		//using distance debugging on line 217
 		float blckrn_constant = 1;
 		//This constant adjusts the required minimum length between the intersection point and the center position of the intersected vertex
 
