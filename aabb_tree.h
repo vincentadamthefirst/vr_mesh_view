@@ -12,20 +12,20 @@ class AabbTree {
 
 public:
 	typedef cgv::math::fvec<float, 3> vec3;
-	typedef std::vector<T> primitive_li; //primitive list type 
-	typedef typename primitive_li::iterator primitive_iterator;//iterator type of primitive list 
-	typedef typename cgv::media::axis_aligned_box<float, 3> box_type;//box type 
+	//define primitive list type 
+	typedef std::vector<T> primitive_li; 
+	//define primitive list iterator type
+	typedef typename primitive_li::iterator primitive_iterator;
+	//define axis aligned bounding box type
+	typedef typename cgv::media::axis_aligned_box<float, 3> box_type;
+
 	primitive_li primitive_list;
 	class AabbNode {
 	protected:
 		box_type box;
 	public:
-		AabbNode() {
-
-		}
-		AabbNode(const box_type& b) :box(b) {
-
-		}
+		AabbNode() {}
+		AabbNode(const box_type& b) :box(b) {}
 		box_type get_box() {
 			return box;
 		}
@@ -41,14 +41,10 @@ public:
 		AabbLeafNode(const primitive_iterator& primitivesBegin,
 			const primitive_iterator& primitivesEnd,
 			const box_type& b) :
-			primitives_begin(primitivesBegin), primitives_end(primitivesEnd), AabbNode(b)
-		{
-
-		}
+			primitives_begin(primitivesBegin), primitives_end(primitivesEnd), AabbNode(b){}
 		//return always true because its a leaf node
 		bool is_leaf() const
 		{
-
 			return true;
 		}
 		//returns the number primitives assosiated with the current leaf
@@ -104,6 +100,7 @@ public:
 		{
 			return false;
 		}
+		//return null because of split node
 		std::vector<vec3> get_triangle() {
 			return {};
 		}
@@ -122,34 +119,14 @@ public:
 		root = nullptr;
 		completed = false;
 	}
-	//test leaf node get triangle's data of leaf node
-	void test() {
-		std::vector<vec3> i = root->left_child()->left_child()->get_triangle();
-		if (!i.empty()) {
-			std::cout << i.at(0) << std::endl;
-			std::cout << i.at(1) << std::endl;
-			std::cout << i.at(2) << std::endl;
-		}
-		else {
-			std::cout << "xxxx" << std::endl;
-		}
-		
-	}
-	void insert(T & tri) {
+	//insert primitives to primitive list
+	void insert(T& tri) {
 		primitive_list.push_back(tri);
 		completed = false;
 	}
-
-	void show_pri_list() {
-		for (auto it = primitive_list.begin(); it != primitive_list.end(); ++it) {
-			it->show();
-		}
-	}
-
+	//build aabb tree from root
 	void pre_build() {
 		box_type box = compute_box(primitive_list.begin(), primitive_list.end());
-		//std::cout<<"root box max point: "<<box.get_max_pnt()<<std::endl;
-		//std::cout << "root box min point: " << box.get_min_pnt()<<std::endl;
 		if (root != nullptr) {
 			delete root;
 		}
@@ -157,6 +134,7 @@ public:
 		completed = true;
 		std::cout << "depth: " << tree_depth << std::endl;
 	}
+	
 	
 	void clear()
 	{
@@ -167,6 +145,7 @@ public:
 			root = nullptr;
 		}
 		completed = false;
+		tree_depth = 0;
 	}
 	bool is_completed() {
 		return completed;
@@ -178,7 +157,6 @@ public:
 	}
 
 protected:
-	
 	box_type compute_box(primitive_iterator begin, primitive_iterator end) {
 			box_type box;
 			for (auto i = begin; i != end; ++i) {

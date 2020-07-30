@@ -395,7 +395,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				post_redraw();
 				break;
 			}
-			//change of modi
+			//change of mode
 			case vr::VR_LEFT_MENU: 
 			{
 				animationmode = animationmode ? false : true;
@@ -511,9 +511,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 			
 				
 			case vr::VR_LEFT_STICK_LEFT:
-			//case vr::VR_RIGHT_BUTTON1:
 			{
-				//std::cout << "animationmode" << animationmode << std::endl;
 				if (!animationmode) {
 					vec3 origin, direction;
 					rightButton1IsPressed = true;
@@ -1913,11 +1911,6 @@ void vr_mesh_view::build_simple_mesh_from_HE() {
 	M.compute_vertex_normals();
 	
 	B = M.compute_box();
-	/*
-	std::cout << "nr_face " << M.get_nr_faces() << std::endl;
-	std::cout << "nr_normal " << M.get_nr_normals() << std::endl;
-	std::cout << "nr_position " << M.get_nr_positions() << std::endl;
-	*/
 	//write the new simple mesh to a object
 	M.write("new.obj");
 
