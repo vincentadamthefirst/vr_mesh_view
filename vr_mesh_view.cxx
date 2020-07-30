@@ -427,6 +427,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					std::cout << "Vertex Deletion activated" << std::endl;
 					vec3 origin, direction;
 					vrke.get_state().controller[1].put_ray(&origin(0), &direction(0));
+					intersectedVertex = nullptr;
 					vertex_deletion(origin, direction);
 				}
 				break;
@@ -538,7 +539,8 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					// create ray
 					ray_intersection::ray vertex_ray = ray_intersection::ray(new_origin, new_dir);
 					//ray_intersection::ray vertex_ray = ray_intersection::ray(origin, direction);
-
+					
+					intersectedVertex = nullptr;
 					float t = 0.0f;
 					HE_Face* face;
 					bool f = ray_intersection::getIntersectedFace_with_t(vertex_ray, he, t, face);
@@ -746,7 +748,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					if (ci == 0) { // left controller
 						//Vertex Manipulation
 						if (leftButton1IsPressed && !animationmode) {
-							if (isVertexPicked) {
+							if (isVertexPicked && intersectedVertex != nullptr) {
 								vec3 last_pos = vrpe.get_last_position();
 								vec3 pos = vrpe.get_position();
 								vr_mesh_view::vertex_manipulate(intersectedVertex, global_to_local(pos), global_to_local(last_pos));
@@ -1817,7 +1819,7 @@ void vr_mesh_view::vertex_deletion(const vec3& origin, const vec3& direction) {
 	//std::vector<HE_Vertex*> vertices_of_mesh = *he->GetVertices();
 	bool vertexIntersection = ray_intersection::vertexIntersection(intersectionPoint, vertices_of_face, intersectedVertex);
 
-	if (vertexIntersection) {
+	if (vertexIntersection && intersectedVertex != nullptr) {
 		std::cout << "Picked vertex: " << intersectedVertex <<" with position: "<<intersectedVertex->position << std::endl;
 		std::vector<HE_Vertex*> neighbor_vertices = he->GetNeighborVertices(intersectedVertex);
 		std::vector<HE_Face*> neighbor_faces = he->GetAdjacentFaces(intersectedVertex);
