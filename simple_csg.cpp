@@ -17,7 +17,7 @@ void SimpleCSG::create_face(mesh_type& M, int index1, int index2, int index3, bo
 }
 
 
-mesh_type SimpleCSG::compute_intersections(mesh_type& M1, HE_Mesh& HE, AabbTree<triangle>& aabb_tree, IcoSphere& IS, CSG_Operation op) {
+mesh_type SimpleCSG::perform_csg_calculation(mesh_type& M1, HE_Mesh& HE, AabbTree<triangle>& aabb_tree, IcoSphere& IS, CSG_Operation op) {
 	vec3 icosphere_center = IS.GetSphereCenter();
 	float radius = IS.GetSphereRadius();
 

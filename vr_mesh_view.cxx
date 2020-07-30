@@ -309,7 +309,7 @@ void vr_mesh_view::perform_simple_csg(CSG_Operation operation) {
 	auto new_he_from_current = generate_from_simple_mesh(M);
 	AabbTree<triangle> new_tree_from_current;
 	build_aabbtree_from_triangles(new_he_from_current, new_tree_from_current);
-	auto new_mesh = SimpleCSG::compute_intersections(M, *new_he_from_current, new_tree_from_current, sphere, operation);
+	auto new_mesh = SimpleCSG::perform_csg_calculation(M, *new_he_from_current, new_tree_from_current, sphere, operation);
 	delete new_he_from_current;
 
 	M = new_mesh;
