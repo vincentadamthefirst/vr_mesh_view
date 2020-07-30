@@ -348,7 +348,7 @@ void vr_mesh_view::perform_simple_csg(CSG_Operation operation) {
 	he = generate_from_simple_mesh(M);
 	build_aabbtree_from_triangles(he, aabb_tree);
 
-	update_measurements();
+	update_Volume_and_Surface();
 }
 	
 bool vr_mesh_view::handle(cgv::gui::event& e)
@@ -481,7 +481,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					std::cout << "reference point for shortest distance: " << p << std::endl;
 
 
-					update_measurements(p, true);
+					update_shortest_distance(p, true);
 				}
 
 				break;
@@ -503,7 +503,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					std::cout << "reference point for shortest distance: " << p << std::endl;
 
 
-					update_measurements(p, false);
+					update_shortest_distance(p, false);
 				}
 
 				break;
@@ -916,7 +916,7 @@ void vr_mesh_view::init_frame(cgv::render::context& ctx)
 		glColor4f(label_color[0], label_color[1], label_color[2], 1);
 		ctx.set_cursor(20, (int)ceil(label_size) + 20);
 		ctx.enable_font_face(label_font_face, label_size);
-		ctx.output_stream() << (animationmode ? animationmode_text : mesheditingmode_text) << label_text << "\n";
+		ctx.output_stream() << (animationmode ? animationmode_text : mesheditingmode_text) << label_text << shortest_distance << "\n";
 		ctx.output_stream().flush(); // make sure to flush the stream before change of font size or font face
 
 		ctx.enable_font_face(label_font_face, 0.7f * label_size);
@@ -1520,7 +1520,7 @@ bool vr_mesh_view::read_main_mesh(const std::string& file_name)
 		he = generate_from_simple_mesh(M);
 		build_aabbtree_from_triangles(he, aabb_tree);
 
-		update_measurements();	
+		update_Volume_and_Surface();	
 
 	}
 	sphere_style.radius = float(0.05 * sqrt(B.get_extent().sqr_length() / Vector_count));
@@ -1976,21 +1976,18 @@ void vr_mesh_view::add_face_to_smoothingMesh(HE_Face* f) {
 }
 
 // updates volume and surface area
-void vr_mesh_view::update_measurements() {
+void vr_mesh_view::update_Volume_and_Surface() {
 
 	float volume = mesh_utils::volume(he);
 	float surface = mesh_utils::surface(he);
-
-	label_text = "Volume: " + std::to_string(volume) + "\nSurface: " + std::to_string(surface) + "\nshortest distance to mesh \nfrom hmd: " ;
+	label_text = "Volume: " + std::to_string(volume) + "\nSurface: " + std::to_string(surface);
 	label_outofdate = true;
 
 }
 
-// updates volume and surface area and shortest diatance to mesh, ad == true approximation of closest point with AD otherwise exact calculation
-void vr_mesh_view::update_measurements(vec3 point, bool ad) {
+// updates shortest diatance to mesh, ad == true approximation of closest point with AD otherwise exact calculation
+void vr_mesh_view::update_shortest_distance(vec3 point, bool ad) {
 
-	float volume = mesh_utils::volume(he);
-	float surface = mesh_utils::surface(he);
 	vec3 cl;
 	HE_Face* f;
 	float shortest;
@@ -2002,8 +1999,8 @@ void vr_mesh_view::update_measurements(vec3 point, bool ad) {
 	}
 
 	closestPoint = local_to_global(cl);
-	label_text = "Volume: " + std::to_string(volume) + "\nSurface: " + std::to_string(surface) + "\nshortest distance to mesh \nfrom hmd: " + std::to_string(shortest);
-	std::cout << label_text << std::endl;
+	shortest_distance = "\nshortest distance to mesh \nfrom hmd: " + std::to_string(shortest);
+	std::cout << shortest_distance << std::endl;
 	label_outofdate = true;
 	new_closest_point = true;
 

@@ -207,6 +207,7 @@ protected:
 	const std::string mesheditingmode_text = "Mesh Editing Mode \nButtons:\nMenu: Change Mode\nL-Stick L: Tesselation\nL-Stick U: Vertex Manipulation\nL-Stick D: Select Smoothing Face\nL-Stick R: Apply Smoothing\n\nR-Stick U: Vertex Deletion\nR-Stick R: Recalculate Measurements\n";
 	const std::string animationmode_text = "Animation Mode \nButtons:\nMenu: Change Mode\nTouch R-Stick: Draw Animation path \n+ translation\nR-Stick D: Go back to Origin\nTouch R-Stick and press R-Stick D: \nRestart Animation \nTouch L-Stick: Rotation and Translation\n";
 	std::string label_text;
+	std::string shortest_distance;
 	int label_font_idx;
 	bool label_upright;
 	float label_size;
@@ -328,8 +329,8 @@ public:
 	void build_simple_mesh_from_HE();
 
 	void add_face_to_smoothingMesh(HE_Face* f);
-	void update_measurements();
-	void update_measurements(vec3 point, bool ad);
+	void update_Volume_and_Surface();
+	void update_shortest_distance(vec3 point, bool ad);
 
 	void drawClosestPoint(cgv::render::context& ctx, vec3 point);
 
