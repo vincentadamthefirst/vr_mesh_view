@@ -138,13 +138,21 @@ void vr_mesh_view::construct_room(DecorState decorState, float w, float d, float
 	}
 	if (decorState == DecorState::ROOM_WALLS || decorState == DecorState::ROOM_TABLE) {
 		// construct walls
+
+		// front
 		environment_boxes.push_back(box3(vec3(-0.5f*w, -W, -0.5f*d - W), vec3(0.5f*w, h, -0.5f*d)));
 		box_colors.push_back(color);
+
+		// back
 		environment_boxes.push_back(box3(vec3(-0.5f*w, -W, 0.5f*d), vec3(0.5f*w, h, 0.5f*d + W)));
 		box_colors.push_back(color);
-		environment_boxes.push_back(box3(vec3(0.5f*w, -W, -0.5f*d - W), vec3(0.5f*w + W, h, 0.5f*d + W)));
+
+		// left
+	    environment_boxes.push_back(box3(vec3(0.5f*w, -W, -0.5f*d - W), vec3(0.5f*w + W, h, 0.5f*d + W)));
 		box_colors.push_back(color);
-		environment_boxes.push_back(box3(vec3(0.5f * w, -W, 0.5f * d - W), vec3(0.5f * w + W, h, 0.5f * d + W)));
+
+		// right
+		environment_boxes.push_back(box3(vec3(-0.5f*w, -W, -0.5f * d), vec3(-0.5f * w + W, h, 0.5f * d + W)));
 		box_colors.push_back(color);
 	}
 	if (decorState == DecorState::ROOM_WALLS || decorState == DecorState::ROOM_TABLE) {
@@ -181,18 +189,27 @@ void vr_mesh_view::construct_environment(DecorState decorState, float s, float e
 	}
 	else if (decorState == DecorState::ROOM_TABLE) {
 		// placing a table
-		rgb color = cgv::media::color<float, cgv::media::HLS>(30.0 / 255.0, 0.5, 0.4);
+		rgb table_clr = cgv::media::color<float, cgv::media::HLS>(30.0 / 255.0, 0.5, 0.4);
 
-		environment_boxes.push_back(box3(vec3(0, 0, 1), vec3(1.5, 1, 0.2)));
-		environment_boxes.push_back(box3(vec3(0.65,  0.4, 0.4) , vec3(0.05, 0.05, 0.8)));
-		environment_boxes.push_back(box3(vec3(0.65, -0.4, 0.4), vec3(0.05, 0.05, 0.8)));
-		environment_boxes.push_back(box3(vec3(-0.65, 0.4, 0.4), vec3(0.05, 0.05, 0.8)));
-		environment_boxes.push_back(box3(vec3(-0.65, -0.4, 0.4), vec3(0.05, 0.05, 0.8)));
-		box_colors.push_back(color);
-		box_colors.push_back(color);
-		box_colors.push_back(color);
-		box_colors.push_back(color);
-		box_colors.push_back(color);
+		// measurements of the table, taken from vr_test
+		float tw = 1.6f;
+		float td = 0.8f;
+		float th = 0.7f;
+		float tW = 0.03f;
+
+		environment_boxes.push_back(box3(
+			vec3(-0.5f*tw - 2 * tW, th - tW, -0.5f*td - 2 * tW),
+			vec3(0.5f*tw + 2 * tW, th, 0.5f*td + 2 * tW)));
+		box_colors.push_back(table_clr);
+
+		environment_boxes.push_back(box3(vec3(-0.5f*tw, 0, -0.5f*td), vec3(-0.5f*tw - tW, th - tW, -0.5f*td - tW)));
+		environment_boxes.push_back(box3(vec3(-0.5f*tw, 0, 0.5f*td), vec3(-0.5f*tw - tW, th - tW, 0.5f*td + tW)));
+		environment_boxes.push_back(box3(vec3(0.5f*tw, 0, -0.5f*td), vec3(0.5f*tw + tW, th - tW, -0.5f*td - tW)));
+		environment_boxes.push_back(box3(vec3(0.5f*tw, 0, 0.5f*td), vec3(0.5f*tw + tW, th - tW, 0.5f*td + tW)));
+		box_colors.push_back(table_clr);
+		box_colors.push_back(table_clr);
+		box_colors.push_back(table_clr);
+		box_colors.push_back(table_clr);
 	}
 }
 
@@ -292,6 +309,8 @@ void vr_mesh_view::on_set(void* member_ptr)
 		}
 		else {
 			if (read_main_mesh(file_name)) {
+				std::cout << file_name << std::endl;
+
 				have_new_mesh = true;
 				// destruct/clear data from previous loaded mesh
 				smoothingpoints.clear();
@@ -355,7 +374,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 			{				
 				bButtonIsPressed = true;
 				new_closest_point = false;
-				animationmode = animationmode ? false : true;
+				animationmode = !animationmode;
 				if (animationmode) {
 					show_animationpath = true;
 					std::cout << "Animation Mode" << std::endl;
@@ -1490,7 +1509,7 @@ bool vr_mesh_view::read_main_mesh(const std::string& file_name)
 		// offset to the mesh to be on top of the table if decorState == ROOM_RABLE
 		if (decorState == ROOM_TABLE) {
 			scale_matrix.identity();
-			vec3 offset(0, 1, 0); // move mesh 1 unit up
+			vec3 offset(0, 1 + (B.get_extent().y() / 2.0f) * mesh_scale, 0); // move mesh 1 unit up
 			M.transform(scale_matrix, offset);
 		}
 
