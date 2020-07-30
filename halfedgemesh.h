@@ -83,10 +83,11 @@ public:
 
 	/// return true if the mesh is closed
 	bool isClosed() { return boundaryFaces.empty() ? true : false; }
-	/// TODO
+	/// adds a boundary Face for the given He_Edge to the vector of boundaryFaces, returns the Face 
 	HE_Face* AddBoundary(HE_Edge* edge);
-
+	// deletes the given Face and corresponding edges from the He_mesh
 	bool deleteFace(HE_Face* f);
+	//deletes the given vertex
 	bool deleteVector(HE_Vertex* vertex);
 
 private:
