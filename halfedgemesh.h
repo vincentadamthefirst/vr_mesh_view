@@ -75,7 +75,7 @@ public:
 	std::vector<HE_Face*> GetAdjacentFaces(HE_Vertex* vertex);
 	/// return vertices making up a face (for now only triangles supported)
 	std::vector<HE_Vertex*> GetVerticesForFace(HE_Face* face);
-	/// returns neighbor vertices fo a given Vertex
+	/// returns neighbor vertices for a given Vertex
 	std::vector<HE_Vertex*> GetNeighborVertices(HE_Vertex* vertex);
 
 	// changes the position of a vertex
@@ -88,7 +88,6 @@ public:
 
 	bool deleteFace(HE_Face* f);
 	bool deleteVector(HE_Vertex* vertex);
-	void showAllInfo(HE_Mesh * he);
 
 private:
 	std::vector<HE_Vertex*> vertices;

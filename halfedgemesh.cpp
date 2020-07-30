@@ -20,6 +20,7 @@ HE_Vertex* HE_Mesh::AddVector(unsigned int originalIndex, vec3 position) {
 	return newVertex;
 }
 
+/// using the cantor pairing to map two integers to one integer for checking if an edge has already been added
 int CantorPairing(int k1, int k2) {
 	return ((k1 + k2) * (k1 + k2 + 1) / 2) + k2;
 }
@@ -100,8 +101,6 @@ std::vector<HE_Vertex*> HE_Mesh::GetVerticesForFace(HE_Face* face) {
 	return toReturn;
 }
 
-
-
 std::vector<HE_Vertex*> HE_Mesh::GetNeighborVertices(HE_Vertex* vertex) {
 	bool loopReverse = false;
 	std::vector<HE_Vertex*> toReturn;
@@ -109,7 +108,7 @@ std::vector<HE_Vertex*> HE_Mesh::GetNeighborVertices(HE_Vertex* vertex) {
 	auto e2 = e1->twin;
 	//boundary
 	if (e2 == nullptr) {
-		// loop in andere Richtung#
+		// loop in reverse order
 		loopReverse = true;
 	}
 	
@@ -130,7 +129,6 @@ std::vector<HE_Vertex*> HE_Mesh::GetNeighborVertices(HE_Vertex* vertex) {
 			else {
 				e2 = e2_temp;
 			}
-			//std::cout << i++ << std::endl;
 		} while (e2 != start);
 	}
 	
@@ -148,20 +146,6 @@ std::vector<HE_Vertex*> HE_Mesh::GetNeighborVertices(HE_Vertex* vertex) {
 	}
 	return toReturn;
 }
-
-//Why vertices of he_mesh and simple mesh do not have the same originalIndex values pointing for the same vertex position? 
-//They are not compatible with each other
-//Therefore this more efficient version does not work
-/*
-bool HE_Mesh::changeVertexPos(HE_Vertex* vertex, vec3 new_pos) {
-	if (vertex == vertices[vertex->originalIndex]) {
-		//std::cout << "Vertex "<< vertices[vertex->originalIndex]->originalIndex <<" with position "<< vertices[vertex->originalIndex]->position << " changed to "<< vertex << " with position "<< vertex->position <<std::endl;
-		vertices[vertex->originalIndex]->position = new_pos;
-		return true;
-	}
-	return false;
-}
-*/
 
 bool HE_Mesh::changeVertexPos(HE_Vertex* vertex, vec3 new_pos) {
 
@@ -237,26 +221,5 @@ bool HE_Mesh::deleteVector(HE_Vertex* vertex) {
 
 	return true;
 }
-
-void HE_Mesh::showAllInfo(HE_Mesh * he)
-{
-	//show some information to compare the faces and edges before and after deletion
-	std::vector<HE_Face*>* face_ = he->GetFaces();
-	int i = 0;
-
-	for (auto face : *face_) {
-		std::cout << "Face: " << i<< std::endl;
-		vec3 v_0 = he->GetVerticesForFace(face).at(0)->position;
-		vec3 v_1 = he->GetVerticesForFace(face).at(1)->position;
-		vec3 v_2 = he->GetVerticesForFace(face).at(2)->position;
-		std::cout << v_0 << " " << std::endl << v_1 << " " << std::endl << v_2 << std::endl;
-		i++;
-	}
-
-	std::cout << "ORIGINAL EDGES"<<originalEdges.size() << std::endl;
-	std::cout << "halfedges" << halfEdges.size() << std::endl;
-	
-}
-
 
 
