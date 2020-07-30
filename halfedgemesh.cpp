@@ -149,20 +149,7 @@ std::vector<HE_Vertex*> HE_Mesh::GetNeighborVertices(HE_Vertex* vertex) {
 	return toReturn;
 }
 
-//Why vertices of he_mesh and simple mesh do not have the same originalIndex values pointing for the same vertex position? 
-//They are not compatible with each other
-//Therefore this more efficient version does not work
-/*
-bool HE_Mesh::changeVertexPos(HE_Vertex* vertex, vec3 new_pos) {
-	if (vertex == vertices[vertex->originalIndex]) {
-		//std::cout << "Vertex "<< vertices[vertex->originalIndex]->originalIndex <<" with position "<< vertices[vertex->originalIndex]->position << " changed to "<< vertex << " with position "<< vertex->position <<std::endl;
-		vertices[vertex->originalIndex]->position = new_pos;
-		return true;
-	}
-	return false;
-}
-*/
-
+//Changes the vertex position in HE_Mesh
 bool HE_Mesh::changeVertexPos(HE_Vertex* vertex, vec3 new_pos) {
 
 	for (auto v : vertices) {
@@ -227,14 +214,16 @@ bool HE_Mesh::deleteVector(HE_Vertex* vertex) {
 		originalVectorIndices.erase(del_originalVertex);
 		std::cout << "originalVectorIndices deleted." << std::endl;
 	}
-	vertex->originalIndex = NULL;
-	vertex->position = NULL;
 
+	//vertex->originalIndex = NULL;
+	//vertex->position = NULL;
+
+	/*
 	try {
 		delete vertex;
 	}
 	catch (std::exception& e) { std::cout << e.what() << std::endl; }
-
+	*/
 	return true;
 }
 
@@ -257,6 +246,3 @@ void HE_Mesh::showAllInfo(HE_Mesh * he)
 	std::cout << "halfedges" << halfEdges.size() << std::endl;
 	
 }
-
-
-
