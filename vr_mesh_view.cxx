@@ -381,8 +381,10 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				}					
 				else {
 					show_animationpath = false;
-					//defined_path2.clear();
-					//defined_path.clear();
+					defined_path2.clear();
+					defined_path.clear();
+					animation_start = false;
+
 					std::cout << "Mesh Editing Mode" << std::endl;
 				}
 					
@@ -403,8 +405,9 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 				}
 				else {
 					show_animationpath = false;
-					//defined_path2.clear();
-					//defined_path.clear();
+					defined_path2.clear();
+					defined_path.clear();
+					animation_start = false;
 					std::cout << "Mesh Editing Mode" << std::endl;
 				}
 
