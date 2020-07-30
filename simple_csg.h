@@ -30,11 +30,7 @@ static class SimpleCSG {
 
 public:
 	/// Method to subtract two simple_meshes, the resulting mesh will be M1 without M2
-	static mesh_type compute_intersections(mesh_type& M1, HE_Mesh& HE, AabbTree<triangle>& aabb_tree, IcoSphere& IS, CSG_Operation op);
-
-	/// Method to perform a CSG operation on two meshes
-	static mesh_type build_mesh(HE_Mesh& HE, std::map<HE_Edge*, CSG_Intersect_Region> edge_regions,
-		std::map<HE_Edge*, vec3> intersect_points, CSG_Operation op);
+	static mesh_type perform_csg_calculation(mesh_type& M1, HE_Mesh& HE, AabbTree<triangle>& aabb_tree, IcoSphere& IS, CSG_Operation op);
 
 private:
 	/// Method to add vertices to new Mesh with correct orientation

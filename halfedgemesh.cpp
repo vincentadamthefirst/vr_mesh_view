@@ -147,6 +147,7 @@ std::vector<HE_Vertex*> HE_Mesh::GetNeighborVertices(HE_Vertex* vertex) {
 	return toReturn;
 }
 
+//Changes the vertex position in HE_Mesh
 bool HE_Mesh::changeVertexPos(HE_Vertex* vertex, vec3 new_pos) {
 
 	for (auto v : vertices) {
@@ -211,15 +212,15 @@ bool HE_Mesh::deleteVector(HE_Vertex* vertex) {
 		originalVectorIndices.erase(del_originalVertex);
 		std::cout << "originalVectorIndices deleted." << std::endl;
 	}
-	vertex->originalIndex = NULL;
-	vertex->position = NULL;
 
+	//vertex->originalIndex = NULL;
+	//vertex->position = NULL;
+
+	/*
 	try {
 		delete vertex;
 	}
 	catch (std::exception& e) { std::cout << e.what() << std::endl; }
-
+	*/
 	return true;
 }
-
-
