@@ -134,25 +134,22 @@ void vr_mesh_view::construct_room(DecorState decorState, float w, float d, float
 	if (decorState != DecorState::NONE) {
 		// construct floor
 		environment_boxes.push_back(box3(vec3(-0.5f * w, -W, -0.5f * d), vec3(0.5f * w, 0, 0.5f * d)));
-		//box_colors.push_back(rgb(0.2f, 0.2f, 0.2f));
 		box_colors.push_back(color);
 	}
 	if (decorState == DecorState::ROOM_WALLS || decorState == DecorState::ROOM_TABLE) {
 		// construct walls
 		environment_boxes.push_back(box3(vec3(-0.5f*w, -W, -0.5f*d - W), vec3(0.5f*w, h, -0.5f*d)));
-		//box_colors.push_back(rgb(0.8f, 0.5f, 0.5f));
 		box_colors.push_back(color);
 		environment_boxes.push_back(box3(vec3(-0.5f*w, -W, 0.5f*d), vec3(0.5f*w, h, 0.5f*d + W)));
-		//box_colors.push_back(rgb(0.8f, 0.5f, 0.5f));
 		box_colors.push_back(color);
 		environment_boxes.push_back(box3(vec3(0.5f*w, -W, -0.5f*d - W), vec3(0.5f*w + W, h, 0.5f*d + W)));
-		//box_colors.push_back(rgb(0.5f, 0.8f, 0.5f));
+		box_colors.push_back(color);
+		environment_boxes.push_back(box3(vec3(0.5f * w, -W, 0.5f * d - W), vec3(0.5f * w + W, h, 0.5f * d + W)));
 		box_colors.push_back(color);
 	}
 	if (decorState == DecorState::ROOM_WALLS || decorState == DecorState::ROOM_TABLE) {
 		// construct ceiling
 		environment_boxes.push_back(box3(vec3(-0.5f*w - W, h, -0.5f*d - W), vec3(0.5f*w + W, h + W, 0.5f*d + W)));
-		//box_colors.push_back(rgb(0.5f, 0.5f, 0.8f));
 		box_colors.push_back(color);
 	}
 }
@@ -183,10 +180,19 @@ void vr_mesh_view::construct_environment(DecorState decorState, float s, float e
 		}
 	}
 	else if (decorState == DecorState::ROOM_TABLE) {
-		// placing chairs, tables and other decor
+		// placing a table
+		rgb color = cgv::media::color<float, cgv::media::HLS>(30.0 / 255.0, 0.5, 0.4);
 
-
-
+		environment_boxes.push_back(box3(vec3(0, 0, 1), vec3(1.5, 1, 0.2)));
+		environment_boxes.push_back(box3(vec3(0.65,  0.4, 0.4) , vec3(0.05, 0.05, 0.8)));
+		environment_boxes.push_back(box3(vec3(0.65, -0.4, 0.4), vec3(0.05, 0.05, 0.8)));
+		environment_boxes.push_back(box3(vec3(-0.65, 0.4, 0.4), vec3(0.05, 0.05, 0.8)));
+		environment_boxes.push_back(box3(vec3(-0.65, -0.4, 0.4), vec3(0.05, 0.05, 0.8)));
+		box_colors.push_back(color);
+		box_colors.push_back(color);
+		box_colors.push_back(color);
+		box_colors.push_back(color);
+		box_colors.push_back(color);
 	}
 }
 
@@ -260,7 +266,7 @@ vr_mesh_view::vr_mesh_view()
 	destructSmoothingMesh = false;
 
 	// the general layout of the scene
-	decorState = DecorState::ROOM_BOXES;
+	decorState = DecorState::ROOM_TABLE;
 	// values: decorState, width, length, height, wall width
 	build_scene(decorState, 5, 7, 3, 0.2f);
 
@@ -344,11 +350,6 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 		if (vrke.get_action() == cgv::gui::KA_PRESS) {
 			std::cout << "KA_PRESS" << std::endl;
 			switch (vrke.get_key()) {
-			case vr::VR_RIGHT_BUTTON0: { 
-				draw_icoSphere = true;
-				auto pose = vrke.get_state().controller[vrke.get_controller_index()].pose;
-				icoSphere_center = vec3(pose[9], pose[10], pose[11]);
-			}
 			// change of modi
 			case vr::VR_RIGHT_MENU: // was MENU, also see KA_RELEASE
 			{				
@@ -431,7 +432,15 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					post_redraw();
 					pathi = 0;
 
-				}break;
+				}
+				else {
+					// activating the drawing of a sphere to indicate the position of the ico sphere
+					draw_icoSphere = true;
+					auto pose = vrke.get_state().controller[vrke.get_controller_index()].pose;
+					icoSphere_center = vec3(pose[9], pose[10], pose[11]);
+				}
+				
+				break;
 			}
 			case vr::VR_RIGHT_STICK_RIGHT:
 			{
@@ -583,10 +592,6 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 		}
 		else if (vrke.get_action() == cgv::gui::KA_RELEASE) {
 			switch (vrke.get_key()) {
-			case vr::VR_RIGHT_BUTTON0: {
-				perform_simple_csg(csg_op);
-				draw_icoSphere = false;
-			}
 			case vr::VR_RIGHT_MENU:
 				bButtonIsPressed = false;
 				break;
@@ -614,6 +619,11 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 			}
 			case vr::VR_RIGHT_STICK_DOWN:
 			{
+				if (!animationmode) {
+					// performing a CSG operation based on the current sphere and selected parameters
+					perform_simple_csg(csg_op);
+					draw_icoSphere = false;
+				}
 
 				{
 					rightButton2IsPressed = false;
@@ -932,9 +942,6 @@ void vr_mesh_view::init_frame(cgv::render::context& ctx)
 		MI_smoothing.destruct(ctx);
 		destructSmoothingMesh = false;
 	}
-		
-
-
 
 	if (vr_view_ptr && vr_view_ptr->get_rendered_vr_kit() != 0 && vr_view_ptr->get_rendered_eye() == 0 && vr_view_ptr->get_rendered_vr_kit() == vr_view_ptr->get_current_vr_kit()) {
 		vr::vr_kit* kit_ptr = vr_view_ptr->get_current_vr_kit();
@@ -1734,14 +1741,7 @@ void vr_mesh_view::tessellation(const vec3& origin, const vec3& direction) {
 				auto halfEdgeC = he->AddHalfEdge(vectorC, vectorA, face);
 				auto halfEdgeB = he->AddHalfEdge(vectorB, vectorC, face, halfEdgeC);
 				auto halfEdgeA = he->AddHalfEdge(vectorA, vectorB, face, halfEdgeB);
-				/*
-				if (halfEdgeC->twin == nullptr)
-					std::cout << "no twin C" << i << std::endl;
-				if (halfEdgeB->twin == nullptr)
-					std::cout << "no twin B" << i << std::endl;
-				if (halfEdgeA->twin == nullptr)
-					std::cout << "no twin A" << i << std::endl;
-				*/
+
 				// closing the loop
 				halfEdgeC->next = halfEdgeA;
 			}
