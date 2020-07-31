@@ -28,9 +28,10 @@ Our project is based on the CGV framework. We have created an environment in the
 			
 	- Mesh animation mode:
 		- Left Controller: Rotation of mesh
-			- ```Stick down```: Define Path
+			- Touch: Rotation + Draw Path
 		- Right Controller: Translation of mesh
-      			- ```Stick ```: Animation
+			- Touch: Translation + Draw Path
+			- ```Stick right```: Do animation along path
 
 ## Members of our team :two_men_holding_hands: :two_women_holding_hands:
 Erdem Uenal, Boyang Liu, Christian Gärber, Vincent Adam, Ye Tao, Stefanie Krell
