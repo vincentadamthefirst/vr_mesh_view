@@ -204,8 +204,8 @@ protected:
 	bool aniButton1IsPressed = false;
 
 	std::vector<HE_Vertex*> smoothingpoints;
-	const std::string mesheditingmode_text = "Mesh Editing Mode \nButtons:\nMenu: Change Mode\nL-Stick L: Tesselation\nL-Stick U: Vertex Manipulation\nL-Stick D: Select Smoothing Face\nL-Stick R: Apply Smoothing\n\nR-Stick U: Vertex Deletion\nR-Stick R: Recalculate Measurements\n";
-	const std::string animationmode_text = "Animation Mode \nButtons:\nMenu: Change Mode\nTouch R-Stick: Draw Animation path \n+ translation\nR-Stick D: Go back to Origin\nTouch R-Stick and press R-Stick D: \nRestart Animation \nTouch L-Stick: Rotation and Translation\n";
+	const std::string mesheditingmode_text = "Mesh Editing Mode\nMenu Button: Change Mode\nL-Stick L: Tesselation\nL-Stick U: Vertex Manipulation\nL-Stick D: Select face\n for Smoothing\nL-Stick R: Smoothing\nR-Stick U: Vertex Deletion\nR-Stick R: Recalculate Volume \nand Surface\nR-Stick L: Closest Point\nR-Stick D: CSG Operation\n";
+	const std::string animationmode_text = "Animation Mode \nMenu Button: Change Mode\nR-Stick: Translation +\nDraw Path\nR-Stick R: Reanimation\nL-Stick: Rotation\n";
 	std::string label_text;
 	std::string shortest_distance;
 	int label_font_idx;
@@ -244,9 +244,14 @@ protected:
 
 	bool animation_start = false;
 	vec3 mesh_centroid;
-
+	vec3 last_ani_pos=(0,0,0);
 	std::vector<vec3> defined_path2;
 	std::vector<vec3> defined_path;
+	enum class ClosestP_op{
+		With_AD,
+		Without_AD
+	};
+	ClosestP_op closestP_op_withAD = ClosestP_op::With_AD;
 
 public:
 	void init_cameras(vr::vr_kit* kit_ptr);

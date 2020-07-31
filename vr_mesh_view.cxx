@@ -292,7 +292,7 @@ vr_mesh_view::vr_mesh_view()
 	label_font_idx = 0;
 	label_upright = true;
 	label_face_type = cgv::media::font::FFA_BOLD;
-	label_resolution = 256;
+	label_resolution = 300;
 	label_size = 20.0f;
 	label_color = rgb(1, 1, 1);
 }
@@ -384,7 +384,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					defined_path2.clear();
 					defined_path.clear();
 					animation_start = false;
-
+					pathi = 0;
 					std::cout << "Mesh Editing Mode" << std::endl;
 				}
 					
@@ -408,6 +408,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					defined_path2.clear();
 					defined_path.clear();
 					animation_start = false;
+					pathi = 0;
 					std::cout << "Mesh Editing Mode" << std::endl;
 				}
 
@@ -435,25 +436,7 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 			case vr::VR_RIGHT_STICK_DOWN:
 			{
 				if (animationmode) {
-					rightButton2IsPressed = true;
-					vec3 go_origin = defined_path[0] - defined_path[pathi];
-					/*add_translation(go_origin);
-					mat3 dummyRotation;
-					dummyRotation.identity();
-					M.transform(dummyRotation, go_origin);*/
-
-
-					mat3 dummyRotation;
-					dummyRotation.identity();
-					add_translation(dummyRotation, go_origin);
-					//M.transform(dummyRotation, translation);
-					M.transform(dummyRotation, go_origin);
-
-
-					B = M.compute_box();
-					have_new_mesh = true;
-					post_redraw();
-					pathi = 0;
+					
 
 				}
 				else {
@@ -468,21 +451,32 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 			case vr::VR_RIGHT_STICK_RIGHT:
 			{
 				if (!animationmode) {
-					//vec3 p = vec3(vrke.get_state().hmd.pose[9], vrke.get_state().hmd.pose[10], vrke.get_state().hmd.pose[11]);
-					vec3 origin, direction;
-					vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
-
-					vec3 p = vec3(vrke.get_state().controller[1].pose[9], vrke.get_state().controller[1].pose[10], vrke.get_state().controller[1].pose[11]);
-
-					//vec3 p = vec3(0,2,0);
-
-					referenceP = p;
-
-					p = global_to_local(p);
-					std::cout << "reference point for shortest distance: " << p << std::endl;
+					
+					std::cout << "Recalculate volume/surface: " << std::endl;
 
 
-					update_shortest_distance(p, true);
+					update_Volume_and_Surface();
+				}else
+				{
+					rightButton2IsPressed = true;
+
+					
+					std::cout << "size:" << defined_path.size() << std::endl;
+					std::cout << "pathi:" << pathi << std::endl;
+					vec3 go_origin = defined_path[0] - defined_path[pathi];
+					
+					mat3 dummyRotation;
+					dummyRotation.identity();
+					add_translation(dummyRotation, go_origin);
+					
+					M.transform(dummyRotation, go_origin);
+
+
+					B = M.compute_box();
+					have_new_mesh = true;
+					post_redraw();
+					pathi = 0;
+
 				}
 
 				break;
@@ -490,21 +484,16 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 			case vr::VR_RIGHT_STICK_LEFT:
 			{
 				if (!animationmode) {
-					//vec3 p = vec3(vrke.get_state().hmd.pose[9], vrke.get_state().hmd.pose[10], vrke.get_state().hmd.pose[11]);
 					vec3 origin, direction;
 					vrke.get_state().controller[0].put_ray(&origin(0), &direction(0));
 
 					vec3 p = vec3(vrke.get_state().controller[1].pose[9], vrke.get_state().controller[1].pose[10], vrke.get_state().controller[1].pose[11]);
 
-					//vec3 p = vec3(0,2,0);
-
 					referenceP = p;
-
 					p = global_to_local(p);
 					std::cout << "reference point for shortest distance: " << p << std::endl;
 
-
-					update_shortest_distance(p, false);
+					update_shortest_distance(p, closestP_op_withAD == ClosestP_op::With_AD);
 				}
 
 				break;
@@ -639,17 +628,32 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 					
 				}break;
 			}
+
+			case vr::VR_RIGHT_STICK_RIGHT: {
+				rightButton2IsPressed = false;
+				if (animationmode) {
+				vec3 go_final = defined_path[defined_path.size()-1] - defined_path[pathi];
+				mat3 dummyRotation;
+				dummyRotation.identity();
+				add_translation(dummyRotation, go_final);
+				
+				M.transform(dummyRotation, go_final);
+
+
+				B = M.compute_box();
+				have_new_mesh = true;
+				post_redraw();
+				pathi = defined_path.size()-1;
+				}
+				break;
+			}
+
 			case vr::VR_RIGHT_STICK_DOWN:
 			{
 				if (!animationmode) {
 					// performing a CSG operation based on the current sphere and selected parameters
 					perform_simple_csg(csg_op);
 					draw_icoSphere = false;
-				}
-
-				{
-					rightButton2IsPressed = false;
-
 				}
 
 				break;
@@ -715,9 +719,11 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 
 					if (ci == 1) { // right controller
 						if (rightButton2IsPressed == false && animationmode) {
+
 							if (animation_start == false) {
 								animation_start = true;
-								vec3 mesh_centroid = aabb_tree.Root()->get_box().get_center();
+								//vec3 mesh_centroid = aabb_tree.Root()->get_box().get_center();
+								vec3 mesh_centroid = local_to_global(aabb_tree.Root()->get_box().get_center());
 								defined_path.push_back(mesh_centroid);
 								defined_path2.push_back(mesh_centroid);
 							}
@@ -779,6 +785,20 @@ bool vr_mesh_view::handle(cgv::gui::event& e)
 							add_rotation(rotation);
 							add_translation(rotation, rotation* (dummyTranslation - last_pos) + pos);
 							M.transform(rotation, rotation* (dummyTranslation - last_pos) + pos);
+
+							
+							
+							if(rightButton2IsPressed == false && animationmode && animation_start == true){
+							vec3 mesh_centroid = local_to_global(aabb_tree.Root()->get_box().get_center());
+
+							defined_path2.push_back(defined_path2[defined_path2.size() - 1]);
+
+							//vec3 ani_translation = mesh_centroid - last_pos;
+							//vec3 new_position = defined_path[defined_path.size() - 1] + ani_translation;
+							defined_path.push_back(mesh_centroid);
+							defined_path2.push_back(mesh_centroid);
+							pathi++;}
+
 
 							// mesh is animated
 							B = M.compute_box();
@@ -914,7 +934,7 @@ void vr_mesh_view::init_frame(cgv::render::context& ctx)
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glColor4f(label_color[0], label_color[1], label_color[2], 1);
-		ctx.set_cursor(20, (int)ceil(label_size) + 20);
+		ctx.set_cursor(20, (int)ceil(label_size) + 10);
 		ctx.enable_font_face(label_font_face, label_size);
 		ctx.output_stream() << (animationmode ? animationmode_text : mesheditingmode_text) << label_text << shortest_distance << "\n";
 		ctx.output_stream().flush(); // make sure to flush the stream before change of font size or font face
@@ -1147,7 +1167,7 @@ void vr_mesh_view::draw(cgv::render::context& ctx)
 		vec3 p(0, 1.5f, 0);
 		vec3 y = label_upright ? vec3(0, 1.0f, 0) : normalize(vr_view_ptr->get_view_up_dir_of_kit());
 		vec3 x = normalize(cross(vec3(vr_view_ptr->get_view_dir_of_kit()), y));
-		float w = 0.5f, h = 0.5f;
+		float w = 0.8f, h = 1.0f;
 		std::vector<vec3> P;
 		std::vector<vec2> T;
 		P.push_back(p - 0.5f * w * x - 0.5f * h * y); T.push_back(vec2(0.0f, 0.0f));
@@ -1408,6 +1428,10 @@ void vr_mesh_view::create_gui() {
 
 	align("\a");
 	add_member_control(this, "IcoSphere subdivisions", icoSphere_subdivisions, "value_slider", "min=0;max=5;ticks=true;log=false");
+	align("\b");
+
+	align("\a");
+	add_member_control(this, "Closest Point operation, with / without Acceleration Datastructure", closestP_op_withAD, "dropdown", "enums='With_AD,Without_AD'");
 	align("\b");
 
 
@@ -1982,7 +2006,7 @@ void vr_mesh_view::update_Volume_and_Surface() {
 
 // updates shortest diatance to mesh, ad == true approximation of closest point with AD otherwise exact calculation
 void vr_mesh_view::update_shortest_distance(vec3 point, bool ad) {
-
+	std::cout << "Closest Point OP with AD? " << ad << std::endl;
 	vec3 cl;
 	HE_Face* f;
 	float shortest;
@@ -1994,7 +2018,7 @@ void vr_mesh_view::update_shortest_distance(vec3 point, bool ad) {
 	}
 
 	closestPoint = local_to_global(cl);
-	shortest_distance = "\nshortest distance to mesh \nfrom hmd: " + std::to_string(shortest);
+	shortest_distance = "\nshortest distance to mesh \nfrom right controller: " + std::to_string(shortest);
 	std::cout << shortest_distance << std::endl;
 	label_outofdate = true;
 	new_closest_point = true;
