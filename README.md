@@ -1,9 +1,7 @@
 # VR Mesh View
 
 ## Introduction
-Implementation of the mesh_view in VR. <br>
-Environment can be toggled by using booleans in the ```vr_mesh_view() ```-constructor.
-All inputs are handled in ```handle()``` individually, for each input a separate event gets fired! 
+Our project is based on the CGV framework. We have created an environment in the VR where you can load a mesh and manipulate it. With our program, you can **translate and rotate** your mesh with controller in the VR. You can also define a path and do the **animation**. Mesh editing is also possible, like **smoothing, tessellation, measuring and vertex manipulation**. We also provide the **constructive solid geometry operation(union, substraction, intersection)**. 
 
 ## How to start :star:
 1.  Project is based on the CGV-Framework develop branch <https://github.com/sgumhold/cgv>;
@@ -13,7 +11,7 @@ All inputs are handled in ```handle()``` individually, for each input a separate
 ## How to use our program :+1:
 1. You should have VIVE controllers;
 2. We have two modes: **animation** and **editing mode**;
-3. Menu button on each controller can switch between two modes;
+3. ```Menu``` button on each controller can switch between two modes;
 4. You can see useful information from a quad in the VR;
 5. Mode introduction:
 	- Mesh editing mode:
@@ -24,17 +22,15 @@ All inputs are handled in ```handle()``` individually, for each input a separate
 			- ```Stick left```: Tessellation
 		- Right Controller:
 			- ```Stick up```: Vertex Deletion
-			- ```Stick down```: 
-			- ```Stick right```: Recalculate Volume, Surface, shortest distance to mesh
-			- ```Stick left```: Recalculate Volume, Surface, shortest distance to mesh with acceleration data structure
+			- ```Stick down```: CSG Operation
+			- ```Stick right```: Recalculate Volume, Surface
+			- ```Stick left```: Shortest distance to mesh with acceleration data structure
 			
 	- Mesh animation mode:
-		- Left Controller: Translation and Rotation of meshes
-			- TODO
-			- TODO
-		- Right Controller:
-      			- TODO
-			- TODO
+		- Left Controller: Rotation of mesh
+			- ```Stick down```: Define Path
+		- Right Controller: Translation of mesh
+      			- ```Stick ```: Animation
 
 ## Members of our team :two_men_holding_hands: :two_women_holding_hands:
 Erdem Uenal, Boyang Liu, Christian Gärber, Vincent Adam, Ye Tao, Stefanie Krell
